@@ -10,7 +10,9 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     # Generate the secret values, the seed for S and E, and
     #the seed for the seed for A.Add seed_A to the public key
     rcount = 2 * params['CRYPTO_BYTES'] + params['BYTES_SEED_A']
-    randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
+    #randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
+    randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
+
     shake(pk, pk_seedA, params['BYTES_SEED_A'], randomness, randomness_z, params['BYTES_SEED_A'])
 #
 
