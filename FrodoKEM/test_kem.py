@@ -1,7 +1,8 @@
 from ctypes import c_uint8
 from timeit import timeit
 from sys import argv
-from numpy import empty, uint8, array_equal
+from numpy import empty, uint8, array_equal, zeros
+from numpymod import uint64, ulonglong
 # for testing: FrodoKEM => mark directory as => source root (helped!)
 
 # Test parameters
@@ -40,11 +41,11 @@ if len(argv) == 1 or argv[1] == "FrodoKEM-640":
 
 
 class KEMValues():
-    pk = empty(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
-    sk = empty(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
-    ss_encap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
-    ss_decap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
-    ct = empty(FrodoKEM640Params['CRYPTO_CIPHERTEXTBYTES'], dtype=uint8)
+    pk = zeros(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
+    sk = zeros(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
+    ss_encap = zeros(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
+    ss_decap = zeros(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
+    ct = zeros(FrodoKEM640Params['CRYPTO_CIPHERTEXTBYTES'], dtype=uint8)
     #
 #
 

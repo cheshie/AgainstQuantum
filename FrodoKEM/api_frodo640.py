@@ -1,5 +1,5 @@
 from kem import crypto_kem_dec, crypto_kem_enc, crypto_kem_keypair
-from ctypes import c_uint16
+from numpy import uint16, array
 from shafips202 import shake128
 
 """
@@ -37,8 +37,7 @@ shake = shake128
 
 # CDF table
 CDF_TABLE_LEN = 13;
-CDF_TABLE = c_uint16 * CDF_TABLE_LEN
-CDF_TABLE = CDF_TABLE(4643, 13363, 20579, 25843, 29227, 31145, 32103, 32525, 32689, 32745, 32762, 32766, 32767)
+CDF_TABLE = array([4643, 13363, 20579, 25843, 29227, 31145, 32103, 32525, 32689, 32745, 32762, 32766, 32767],dtype=uint16)
 FrodoKEM640Params['CDF_TABLE'] = CDF_TABLE
 
 #TODO: You must perfectly comment this code. Example => shake is shake function defined

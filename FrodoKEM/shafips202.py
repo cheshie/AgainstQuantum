@@ -1,4 +1,5 @@
-from numpy import empty, uint64, uint8, array
+from numpy import empty, uint8, array, zeros, uint64 as numpy_uint64
+from numpymod import uint64, ulonglong
 import trace
 
 trace.debug_mode = True
@@ -42,7 +43,7 @@ KeccakF_RoundConstants = array(
     0x0000000080000001,
     0x8000000080008008
     ],
-    dtype=uint64
+    dtype=numpy_uint64
 )
 
 
@@ -50,46 +51,49 @@ KeccakF_RoundConstants = array(
 # TODO: if I pass these indexes, are they zeroized when needed?
 # PROBLEM2: Assume I send this pair: index and array
 # When I send them to other functions, they get their copies so every time they will be zeroed!
-def shake128(output, output_start, outlen, input_a, input_a_start, inlen):
-    s = empty(25, dtype=uint64)
-    t = empty(SHAKE128_RATE, dtype=uint8)
-    nblocks = outlen / SHAKE128_RATE
+def shake128(output, outlen, input_a, inlen):
+    s = zeros(25, dtype=numpy_uint64)
+    t = zeros(SHAKE128_RATE, dtype=uint8)
+    nblocks = outlen // SHAKE128_RATE
 
     # Absorb input_a
-    keccak_absorb(s, SHAKE128_RATE, input_a, input_a_start, inlen, 0x1F)
+    keccak_absorb(s, SHAKE128_RATE, input_a, inlen, 0x1F)
 
-    # trace("len s: ",len(s))
-    # for x in s:
-    #     trace(s,", ",end="")
-    # trace("\n\n\n")
+
+    nblocks = 121
 
     # Squeeze output
-    keccak_squeezeblocks(output, output_start, nblocks, s, SHAKE128_RATE)
+    keccak_squeezeblocks(output, nblocks, s, SHAKE128_RATE)
 
-    output_start += nblocks*SHAKE128_RATE
+    # tlist("output: ",output)
+    # tlist("s: ", s)
+    # trace("nblocks: ",nblocks)
+    # trace("\n\n")
+
+    output = output[nblocks*SHAKE128_RATE:]
     outlen -= nblocks*SHAKE128_RATE
 
     if outlen:
-        keccak_squeezeblocks(t, 0, 1, s, SHAKE128_RATE)
-        for i in range(output_start, output_start + outlen):
+        keccak_squeezeblocks(t, 1, s, SHAKE128_RATE)
+        for i in range(outlen):
             output[i] = t[i]
+
+    exit(0)
 #
 
 
 # possible implementation:
 # https: // github.com / zjtone / keccak - python / blob / master / Keccak.py
 # This one is python3 wrapper written in c and doesn't match my needs: https://pypi.org/project/pysha3/#downloads
-def keccak_absorb(s, r, m, m_index, mlen, p):
-    t = empty(200, dtype=uint64)
-
-    # mlen = 9616
-    # l1 = 3
-    # print(f"OK: {mlen} >= {r}")
+def keccak_absorb(s, r, m, mlen, p):
+    t = zeros(200, dtype=uint8)
+    # TODO: mlen here is usingned long long int => should i use modified numpy
 
     while mlen >= r:
         for i in range(r//8):
             s[i] ^= load64(m,8 * i)
 
+        # no access here for now
         # trace("s: ")
         # for x in s:
         #     trace(s, ", ", end="")
@@ -102,96 +106,88 @@ def keccak_absorb(s, r, m, m_index, mlen, p):
         mlen -= r
         m += r
 
+    # why do you zero these here? t has length 200 and you zero 168.
+    # Do we need pointer to current t here?
     for i in range(r):
         t[i] = 0
+
     for i in range(mlen):
         t[i] = m[i]
+
+    # In c, there is ++i in loop, here mlen must be assigned manually
+    i = mlen
+
     t[i] = p
     t[r - 1] |= uint64(128)
 
-    tlist("t", t)
-
     for i in range(r//8):
-        s[i] ^= load64(t,8 * i)
+        s[i] ^= load64(t[8 * i:])
+
 #
 
 
 # YOU REALLY NEED TO CHECK IF THAT "S" array got permuted
-def keccak_squeezeblocks(h, h_index, nblocks, s, r):
+def keccak_squeezeblocks(h, nblocks, s, r):
     while nblocks > 0:
         keccakf1600_state_permute(s)
+        trace("nblocks: ",nblocks)
+        tlist("s", s)
         for i in range(r>>3):
-            store64(h, h_index+8*i, s[i])
+            store64(h[8*i:], s[i])
 
-        h += r
+        h = h[r:] # Recent change - appears to be correct
+        # BUT AFTER THIS CHANGE THERE IS IndexError - why?
         nblocks -= 1
 #
 
 
-def load64(x, x_index):
-    r = uint64(0)
+def load64(x):
+    r = ulonglong(0)
 
-    #trace("l64: ",x[x_index], type(x_index))
-    #trace("l64: ", x_index,len(x))
-
-    for i in range(x_index,x_index+8):
-        # trace("l64 - access: ",x[i])
-        r |= x[i] << uint64(8 * i)
+    for i in range(8):
+        i = ulonglong(i)
+        r |= ulonglong(ulonglong(x[i]) << ulonglong(8) * i)
 
     return r
 #
 
 
-def store64(x, x_index, u):
-    for i in range(x_index, x_index+8):
+def store64(x, u):
+    for i in range(8):
         x[i] = uint8(u)
         u >>= uint64(8)
-#
-
-
-def copy_to_state(vars, state, copy_to_state):
-    if copy_to_state is True:
-        for x in range(25):
-            state[x] = vars[x]
-    else:
-        for x in range(25):
-            yield state[x]
 #
 
 
 def keccakf1600_state_permute(state):
     ROL = lambda a,offset: (a << uint64(offset)) ^ (a >> uint64(64-offset))
 
-    # copyFromState(A, state)
-    Aba,Abe,Abi,Abo,Abu,Aga,Age,Agi,Ago,Agu,Aka,Ake,\
-    Aki,Ako,Aku,Ama,Ame,Ami,Amo,Amu,Asa,Ase,Asi,Aso,Asu = copy_to_state(None, state, False)
-    
     # # copyFromState(A, state)
-    # Aba = state[ 0]
-    # Abe = state[ 1]
-    # Abi = state[ 2]
-    # Abo = state[ 3]
-    # Abu = state[ 4]
-    # Aga = state[ 5]
-    # Age = state[ 6]
-    # Agi = state[ 7]
-    # Ago = state[ 8]
-    # Agu = state[ 9]
-    # Aka = state[10]
-    # Ake = state[11]
-    # Aki = state[12]
-    # Ako = state[13]
-    # Aku = state[14]
-    # Ama = state[15]
-    # Ame = state[16]
-    # Ami = state[17]
-    # Amo = state[18]
-    # Amu = state[19]
-    # Asa = state[20]
-    # Ase = state[21]
-    # Asi = state[22]
-    # Aso = state[23]
-    # Asu = state[24]
+    Aba = state[ 0]
+    Abe = state[ 1]
+    Abi = state[ 2]
+    Abo = state[ 3]
+    Abu = state[ 4]
+    Aga = state[ 5]
+    Age = state[ 6]
+    Agi = state[ 7]
+    Ago = state[ 8]
+    Agu = state[ 9]
+    Aka = state[10]
+    Ake = state[11]
+    Aki = state[12]
+    Ako = state[13]
+    Aku = state[14]
+    Ama = state[15]
+    Ame = state[16]
+    Ami = state[17]
+    Amo = state[18]
+    Amu = state[19]
+    Asa = state[20]
+    Ase = state[21]
+    Asi = state[22]
+    Aso = state[23]
+    Asu = state[24]
 
     for round in range(0,NROUNDS, 2):
         # prepareTheta
@@ -384,37 +380,31 @@ def keccakf1600_state_permute(state):
         Aso =   BCo ^((~BCu)&  BCa )
         Asu =   BCu ^((~BCa)&  BCe )
 
-    copy_to_state(
-        [Aba, Abe, Abi, Abo, Abu, Aga, Age, Agi, Ago, Agu, Aka, Ake, \
-         Aki, Ako, Aku, Ama, Ame, Ami, Amo, Amu, Asa, Ase, Asi, Aso, Asu],
-        state,
-        True)
-
-    # # copy_to_state(state, A)
-    # state[0] = Aba
-    # state[1] = Abe
-    # state[2] = Abi
-    # state[3] = Abo
-    # state[4] = Abu
-    # state[5] = Aga
-    # state[6] = Age
-    # state[7] = Agi
-    # state[8] = Ago
-    # state[9] = Agu
-    # state[10] = Aka
-    # state[11] = Ake
-    # state[12] = Aki
-    # state[13] = Ako
-    # state[14] = Aku
-    # state[15] = Ama
-    # state[16] = Ame
-    # state[17] = Ami
-    # state[18] = Amo
-    # state[19] = Amu
-    # state[20] = Asa
-    # state[21] = Ase
-    # state[22] = Asi
-    # state[23] = Aso
-    # state[24] = Asu
+    # copy_to_state(state, A)
+    state[0] = Aba
+    state[1] = Abe
+    state[2] = Abi
+    state[3] = Abo
+    state[4] = Abu
+    state[5] = Aga
+    state[6] = Age
+    state[7] = Agi
+    state[8] = Ago
+    state[9] = Agu
+    state[10] = Aka
+    state[11] = Ake
+    state[12] = Aki
+    state[13] = Ako
+    state[14] = Aku
+    state[15] = Ama
+    state[16] = Ame
+    state[17] = Ami
+    state[18] = Amo
+    state[19] = Amu
+    state[20] = Asa
+    state[21] = Ase
+    state[22] = Asi
+    state[23] = Aso
+    state[24] = Asu
 
 #
