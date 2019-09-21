@@ -1,0 +1,19 @@
+
+
+
+
+1. Add tests more frequently => you write sth, you test it! (Deductive / Inductive => better?)
+2. This program must be objective! Start writing classes
+3. Use additional libraries instead of writing everything alone => python-mind!
+
+4. Look at these declarations:
+
+    (uint64_t)0x0000000000000001ULL,
+    (uint64_t)0x0000000000008082ULL,
+    (...)
+
+    And you decided to zeroize uint64 if its above int range? And these c variables
+    have negative values even though they're unsigned ? WTF is GOING ON??
+
+
+5. WOW %lu instead of %d finally does not print these zeroes. WHAT NOW?

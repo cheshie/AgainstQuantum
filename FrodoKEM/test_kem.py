@@ -1,7 +1,8 @@
 from ctypes import c_uint8
 from timeit import timeit
 from sys import argv
-from numpy import empty, uint8, array_equal
+from numpy import empty, uint8, array_equal, zeros,uint64, ulonglong
+#from numpymod import uint64, ulonglong
 # for testing: FrodoKEM => mark directory as => source root (helped!)
 
 # Test parameters
@@ -26,8 +27,7 @@ if len(argv) == 2:
 # Default option is FrodoKEM-640 - even if no args were supplied
 if len(argv) == 1 or argv[1] == "FrodoKEM-640":
     from api_frodo640 import crypto_kem_keypair_Frodo640, crypto_kem_dec_Frodo640 \
-        , crypto_kem_enc_Frodo640, CRYPTO_SECRETKEYBYTES, CRYPTO_CIPHERTEXTBYTES \
-        , CRYPTO_PUBLICKEYBYTES, CRYPTO_BYTES, CRYPTO_ALGNAME as SYSTEM_NAME
+        , crypto_kem_enc_Frodo640, FrodoKEM640Params, CRYPTO_ALGNAME as SYSTEM_NAME
 
     # Assign functions according to algorithm specified
     crypto_kem_keypair = crypto_kem_keypair_Frodo640
@@ -41,11 +41,11 @@ if len(argv) == 1 or argv[1] == "FrodoKEM-640":
 
 
 class KEMValues():
-    pk = empty(CRYPTO_PUBLICKEYBYTES, dtype=uint8)
-    sk = empty(CRYPTO_SECRETKEYBYTES, dtype=uint8)
-    ss_encap = empty(CRYPTO_BYTES, dtype=uint8)
-    ss_decap = empty(CRYPTO_BYTES, dtype=uint8)
-    ct = empty(CRYPTO_CIPHERTEXTBYTES, dtype=uint8)
+    pk = zeros(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
+    sk = zeros(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
+    ss_encap = zeros(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
+    ss_decap = zeros(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
+    ct = zeros(FrodoKEM640Params['CRYPTO_CIPHERTEXTBYTES'], dtype=uint8)
     #
 #
 
