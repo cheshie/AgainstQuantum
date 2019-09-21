@@ -1,5 +1,5 @@
-from numpy import empty, uint8, array, zeros, uint64, ulonglong
-#from numpymod import uint64, ulonglong
+from numpy import empty, uint8, array, zeros, uint64 as numpy_uint64
+from numpymod import uint64, ulonglong
 import trace
 
 trace.debug_mode = True
@@ -68,12 +68,20 @@ def shake128(output, outlen, input_a, inlen):
     keccak_squeezeblocks(output, nblocks, s, SHAKE128_RATE)
 
     output_ref = output_ref[nblocks*SHAKE128_RATE:]
+
+    # tlist("output: ",output)
+    # tlist("s: ", s)
+    # trace("nblocks: ",nblocks)
+    # trace("\n\n")
+
     outlen -= nblocks*SHAKE128_RATE
 
     if outlen:
         keccak_squeezeblocks(t, 1, s, SHAKE128_RATE)
         for i in range(outlen):
             output_ref[i] = t[i]
+
+    exit(0)
 #
 
 
@@ -82,6 +90,7 @@ def shake128(output, outlen, input_a, inlen):
 # This one is python3 wrapper written in c and doesn't match my needs: https://pypi.org/project/pysha3/#downloads
 def keccak_absorb(s, r, m, mlen, p):
     t = zeros(200, dtype=uint8)
+    # TODO: mlen here is usingned long long int => should i use modified numpy
 
     while mlen >= r:
         for i in range(r//8):
@@ -133,6 +142,18 @@ def keccak_squeezeblocks(h, nblocks, s, r):
             store64(h_ref[8*i:], s[i])
         # HEY IMPORTANT: THIS DOES NOT GET SHORTENED OUTSIDE FUNCTION!!!
         h_ref = h_ref[r:]
+#
+
+
+def keccak_squeezeblocks(h, nblocks, s, r):
+    while nblocks > 0:
+        keccakf1600_state_permute(s)
+        trace("nblocks: ",nblocks)
+        tlist("s", s)
+        for i in range(r>>3):
+            store64(h[8*i:], s[i])
+
+        h = h[r:]
         nblocks -= 1
 #
 
@@ -142,6 +163,8 @@ def load64(x):
 
     for i in range(8):
         r |= x[i] << ulonglong(8 * i)
+        i = ulonglong(i)
+        r |= ulonglong(ulonglong(x[i]) << ulonglong(8) * i)
 
     return r
 #

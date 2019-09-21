@@ -1,8 +1,7 @@
 from ctypes import c_uint8
 from timeit import timeit
 from sys import argv
-from numpy import empty, uint8, array_equal, zeros,uint64, ulonglong
-#from numpymod import uint64, ulonglong
+from numpy import empty, uint8, array_equal, zeros
 # for testing: FrodoKEM => mark directory as => source root (helped!)
 
 # Test parameters
