@@ -1,4 +1,5 @@
 from numpy import ushort
+import os
 
 """
 * FrodoKEM: Learning with Errors Key Encapsulation
@@ -54,13 +55,19 @@ from numpy import ushort
 # endif
 
 
-# if defined(WINDOWS)
-# define ALIGN_HEADER(N) __declspec(align(N))
-# define ALIGN_FOOTER(N)
-# else
-# define ALIGN_HEADER(N)
-# define ALIGN_FOOTER(N) __attribute__((aligned(N)))
-# endif
+# topic: https://docs.microsoft.com/en-us/cpp/cpp/align-cpp?view=vs-2019
+# question: are these __declspec, align and __attribute__ c - specific?
+if 'nt' in os.name:
+    def ALIGN_HEADER(N):
+        return N #__declspec(align(N))
+    #
+    def ALIGN_FOOTER(N):
+        return N
+else:
+    def ALIGN_HEADER(N):
+        return N
+    def ALIGN_FOOTER(N):
+        return N #__attribute__((aligned(N)))
 
 
 # Selecting implementation: fast, generic or reference
