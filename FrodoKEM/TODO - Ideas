@@ -17,3 +17,6 @@
 
 5. WOW %lu instead of %d finally does not print these zeroes. WHAT NOW?
     have negative values even though they're unsigned ? WTF is GOING ON??
+    
+  
+6. After implementing KEM, try to use some protocol, like TLS or sth to use this algorithm in communication effectively
