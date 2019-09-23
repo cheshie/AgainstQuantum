@@ -39,6 +39,7 @@ shake = shake128
 CDF_TABLE_LEN = 13;
 CDF_TABLE = array([4643, 13363, 20579, 25843, 29227, 31145, 32103, 32525, 32689, 32745, 32762, 32766, 32767],dtype=uint16)
 FrodoKEM640Params['CDF_TABLE'] = CDF_TABLE
+FrodoKEM640Params['CDF_TABLE_LEN'] = CDF_TABLE_LEN
 
 #TODO: You must perfectly comment this code. Example => shake is shake function defined
 # in shafips202 for specific set of KEM

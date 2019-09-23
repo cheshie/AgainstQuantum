@@ -1,19 +1,12 @@
-/ ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
-*FrodoKEM: Learning
-with Errors Key Encapsulation
+from numpy import ushort
+
+"""
+* FrodoKEM: Learning with Errors Key Encapsulation
 *
-*Abstract: configuration
-file
-** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** * /
+* Abstract: configuration file
+"""
 
-# ifndef _CONFIG_H_
-# define _CONFIG_H_
-
-
-// Definition
-of
-operating
-system
+# Definition of operating system
 
 # define OS_WIN       1
 # define OS_NIX       2
@@ -27,9 +20,7 @@ system
 # endif
 
 
-// Definition
-of
-compiler
+# Definition of compiler
 
 # define COMPILER_VC      1
 # define COMPILER_GCC     2
@@ -46,13 +37,7 @@ compiler
 # endif
 
 
-// Definition
-of
-the
-targeted
-architecture and basic
-data
-types
+# Definition of the targeted architecture and basic data types
 
 # define TARGET_AMD64        1
 # define TARGET_x86          2
@@ -78,8 +63,7 @@ types
 # endif
 
 
-// Selecting
-implementation: fast, generic or reference
+# Selecting implementation: fast, generic or reference
 # if defined(_FAST_)    // The "fast" implementation requires support for AVX2 and AES_NI instructions
 # define USE_AVX2
 # define AES_ENABLE_NI
@@ -93,9 +77,7 @@ implementation: fast, generic or reference
 # endif
 
 
-// Defining
-method
-for generating matrix A
+# Defining method for generating matrix A
 # if defined(_AES128_FOR_A_)
 # define USE_AES128_FOR_A
 # elif defined(_SHAKE128_FOR_A_)
@@ -104,39 +86,30 @@ for generating matrix A
 ##error -- missing method for generating matrix A
 # endif
 
-// Selecting
-use
-of
-OpenSSL
-'s AES functions
+# Selecting use of OpenSSL 's AES functions
 # if defined(_USE_OPENSSL_)
 # define USE_OPENSSL
 # endif
 
 
-// Configuration
-for endianness
-    # if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-    # define LE_TO_UINT16(n) (((((unsigned short)(n) & 0xFF)) << 8) | (((unsigned short)(n) & 0xFF00) >> 8))
-    # define UINT16_TO_LE(n) (((((unsigned short)(n) & 0xFF)) << 8) | (((unsigned short)(n) & 0xFF00) >> 8))
-    # elif (TARGET == TARGET_x86 || TARGET == TARGET_AMD64) || (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
-    # define LE_TO_UINT16(n) (n)
-    # define UINT16_TO_LE(n) (n)
-    # else
-    # define LE_TO_UINT16(n) (((uint8_t *) &(n))[0] | (((uint8_t *) &(n))[1] << 8))
-    static
-    inline
-    uint16_t
-    UINT16_TO_LE(const
-    uint16_t
-    x) {
-        uint16_t
-    y;
-    uint8_t * z = (uint8_t *) & y;
-    z[0] = x & 0xFF;
-    z[1] = x >> 8;
-    return y;
-    }
-    # endif
+# Configuration for endianness
 
-    # endif
+# if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#def LE_TO_UINT16(n):
+#    return ushort(n) & 0xFF << ushort(8) | ushort(n) & 0xFF00 >> ushort(8)
+
+#def UINT16_TO_LE(n):
+#    return ushort(n) & 0xFF << ushort(8) | ushort(n) & 0xFF00 >> ushort(8)
+
+# elif (TARGET == TARGET_x86 || TARGET == TARGET_AMD64) || (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
+def LE_TO_UINT16(n):
+    return n
+def UINT16_TO_LE(n):
+    return n
+
+# else
+# define LE_TO_UINT16(n) (((uint8_t *) &(n))[0] | (((uint8_t *) &(n))[1] << 8))
+# static inline uint16_t UINT16_TO_LE(const uint16_t x) { uint16_t y; uint8_t * z = (uint8_t *) & y; z[0] = x & 0xFF; z[1] = x >> 8; return y;}
+# endif
+
+# endif

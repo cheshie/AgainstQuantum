@@ -1,5 +1,6 @@
 from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer
-#from numpymod import uint64, ulonglong
+from config import LE_TO_UINT16, UINT16_TO_LE
+from noise import frodo_sample_n
 import secrets
 import trace
 
@@ -46,39 +47,21 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     sizeof_uint16 = 2
 
     shake(S_u8, 2*params['PARAMS_N']*params['PARAMS_NBAR']*sizeof_uint16, shake_input_seedSE, 1 + params['CRYPTO_BYTES'])
-    S = frombuffer(S_u8.tobytes(), dtype=uint16)
+    S = frombuffer(S_u8.tobytes(), dtype=uint16).copy()
+    E = S[params['PARAMS_N'] * params['PARAMS_NBAR']:]
 
     for i in range(2*params['PARAMS_N']*params['PARAMS_NBAR']):
         S[i] = UINT16_TO_LE(S[i])
 
 
+    frodo_sample_n(S, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
+    frodo_sample_n(E, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
+
+    tlist("S", S)
+    tlist("E", E)
+    exit(0)
 
     tlist("shake_input_seedSE", shake_input_seedSE)
-    tlist("S", S)
-
-
-
-    exit(0)
-#
-
-def crypto_kem_keypair(pk, sk,shake, **params):
-    # SHAKE IS DEFINED IN API_FRODO640 => its shake128
-    pk_seedA = pk
-    randomness_z = 2 * params['CRYPTO_BYTES']
-
-    # Generate the secret values, the seed for S and E, and
-    #the seed for the seed for A.Add seed_A to the public key
-    rcount = 2 * params['CRYPTO_BYTES'] + params['BYTES_SEED_A']
-    #randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
-    randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
-
-    randomness_s = randomness
-    randomness_seedSE = randomness[params['CRYPTO_BYTES']:]
-    randomness_z = randomness[2*params['CRYPTO_BYTES']:]
-    # shake_input_seedSE[1 + params['CRYPTO_BYTES']]  declare numpy array here
-
-    #TODO: eliminate pk and index of pk. Instead pass part of array that is needed
-    shake(pk_seedA, params['BYTES_SEED_A'], randomness_z, params['BYTES_SEED_A'])
 #
 
 

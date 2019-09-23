@@ -1,5 +1,4 @@
-from numpy import empty, uint8, array, zeros, uint64 as numpy_uint64
-from numpymod import uint64, ulonglong
+from numpy import empty, uint8, array, zeros, uint64, ulonglong
 import trace
 
 trace.debug_mode = True
@@ -53,9 +52,6 @@ KeccakF_RoundConstants = array(
 # When I send them to other functions, they get their copies so every time they will be zeroed!
 def shake128(output, outlen, input_a, inlen):
     output_ref = output
-    trace("Shake - outlen: ",outlen)
-    trace("Shake - inlen: ", inlen)
-    trace("Shake - nblocks: ",outlen // SHAKE128_RATE)
 
     s = zeros(25, dtype=uint64)
     t = zeros(SHAKE128_RATE, dtype=uint8)
@@ -69,19 +65,12 @@ def shake128(output, outlen, input_a, inlen):
 
     output_ref = output_ref[nblocks*SHAKE128_RATE:]
 
-    # tlist("output: ",output)
-    # tlist("s: ", s)
-    # trace("nblocks: ",nblocks)
-    # trace("\n\n")
-
     outlen -= nblocks*SHAKE128_RATE
 
     if outlen:
         keccak_squeezeblocks(t, 1, s, SHAKE128_RATE)
         for i in range(outlen):
             output_ref[i] = t[i]
-
-    exit(0)
 #
 
 
@@ -129,18 +118,13 @@ def keccak_absorb(s, r, m, mlen, p):
 
 
 def keccak_squeezeblocks(h, nblocks, s, r):
-    trace("KC - nblocks: ",nblocks)
-    trace("KC - r: ",r)
-    trace("KC - H-size: ",len(h))
     h_ref = h
 
     while nblocks > 0:
         keccakf1600_state_permute(s)
 
         for i in range(r>>3):
-            print("H-index: ",8*i, " <> Size: ",len(h_ref))
             store64(h_ref[8*i:], s[i])
-        # HEY IMPORTANT: THIS DOES NOT GET SHORTENED OUTSIDE FUNCTION!!!
         h_ref = h_ref[r:]
 #
 
@@ -148,8 +132,6 @@ def keccak_squeezeblocks(h, nblocks, s, r):
 def keccak_squeezeblocks(h, nblocks, s, r):
     while nblocks > 0:
         keccakf1600_state_permute(s)
-        trace("nblocks: ",nblocks)
-        tlist("s", s)
         for i in range(r>>3):
             store64(h[8*i:], s[i])
 
@@ -162,9 +144,8 @@ def load64(x):
     r = ulonglong(0)
 
     for i in range(8):
-        r |= x[i] << ulonglong(8 * i)
         i = ulonglong(i)
-        r |= ulonglong(ulonglong(x[i]) << ulonglong(8) * i)
+        r |= ulonglong(x[i]) << ulonglong(8) * i
 
     return r
 #
