@@ -41,9 +41,45 @@ int u1632()
 	return 0;
 }
 
+int frodo_mul_test()
+{
+	u_int8_t a[] = {1,2,3,4,5,6,7,8};
+	u_int8_t b[] = {9,9,9,9,9,9,9,9};
+
+	for (int i=0; i<8; i+=2)
+		*((u_int16_t*)&a[i]) = *((u_int16_t*)&b[i]);
+	
+	printf("a: ");
+	for(int i=0; i<8; i++)
+		printf("%i",a[i]);
+	printf("\nAfter change in a: \n\n");
+	
+	b[6] = 33;
+	b[7] = 33;
+
+	a[0] = 22;
+	a[1] = 22;
+
+
+	printf("a: ");
+	for(int i=0; i<8; i++)
+		printf("%i",a[i]);
+	printf("\n");
+
+	printf("b: ");
+	for(int i=0; i<8; i++)
+		printf("%i",b[i]);
+	return 0;
+}
+
 
 int main(int argc, char *argv[])
 {
+	frodo_mul_test();
+
+
+
+
 //    printf("Size of int : %ld byte, Max value : %d, Min value : %d\n", sizeof(int), INT_MAX, INT_MIN);
 //    printf("Size of long : %ld byte, Max value : %d, Min value : %d\n", sizeof(long), LONG_MAX, LONG_MIN);
 //    printf("\n");
@@ -63,7 +99,7 @@ int main(int argc, char *argv[])
 	//	p += 1;
 	//}
 
-	u1632();
+	//u1632();
 
 	//u_int16_t ar[5] = {1,2,3,4,5};
         //u_int8_t  *tgr  = ar;

@@ -1,6 +1,7 @@
 from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
+from frodo_macrify import frodo_mul_add_as_plus_e
 import secrets
 import trace
 
@@ -33,7 +34,7 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     shake_input_seedSE = zeros(1 + params['CRYPTO_BYTES'],dtype=uint8)
 
     # AFTER This function randomness_z is much shorter - has only  16 places. Why?
-    #shake(pk_seedA, params['BYTES_SEED_A'], randomness_z, params['BYTES_SEED_A'])
+    shake(pk_seedA, params['BYTES_SEED_A'], randomness_z, params['BYTES_SEED_A'])
 
     # Generate S and E, compute B = A*S + E. Generate A on-the-fly
     shake_input_seedSE[0] = 0x5F;
@@ -57,9 +58,8 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     frodo_sample_n(S, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
     frodo_sample_n(E, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
 
-    tlist("S", S)
-    tlist("E", E)
-    exit(0)
+
+    frodo_mul_add_as_plus_e(B, S, E, pk, **params)
 
     tlist("shake_input_seedSE", shake_input_seedSE)
 #
