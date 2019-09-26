@@ -1,5 +1,5 @@
 import config
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array
+from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 import trace
@@ -26,7 +26,11 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
     out = e.copy()
 
     # If USE_AES128_FOR_A defined
-    a_row_temp = zeros(4*params['PARAMS_N'], dtype=uint16)
+    a_row_temp = array(
+        [UINT16_TO_LE(j - 1) if j % params['PARAMS_STRIPE_STEP'] - 1 == 0 else 0
+         for j in range(params['PARAMS_N'])] * 4,
+        dtype=uint16
+    )
 
     # Create new EVP cipher object and pass key from pk
     cipher = AES.new(seed_A[:16], AES.MODE_ECB)
@@ -35,50 +39,65 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
     # TODO: All these LOOPS - its very uneffective!!!!
     #TODO
 
-    # THIS WRONG => HOW TO MAKE IT RIGHT AND FAST??
-    # tmp = params['PARAMS_N']    # Loading values in the little-endian order
-    # a_row_temp[1:tmp:params['PARAMS_STRIPE_STEP']] =\
-    # a_row_temp[tmp + 1:2 * tmp:params['PARAMS_STRIPE_STEP']] =\
-    # a_row_temp[2 * tmp + 1:3 * tmp:params['PARAMS_STRIPE_STEP']] =\
-    # a_row_temp[3 * tmp + 1:4 * tmp:params['PARAMS_STRIPE_STEP']] = UINT16_TO_LE(tmp)
-
-    for j in range(0,params['PARAMS_N'],params['PARAMS_STRIPE_STEP']):
-        a_row_temp[j + 1 + 0 * params['PARAMS_N']] = UINT16_TO_LE(j)
-        a_row_temp[j + 1 + 1 * params['PARAMS_N']] = UINT16_TO_LE(j)    # Loading values in the little-endian order
-        a_row_temp[j + 1 + 2 * params['PARAMS_N']] = UINT16_TO_LE(j)
-        a_row_temp[j + 1 + 3 * params['PARAMS_N']] = UINT16_TO_LE(j)
+    # for j in range(0,params['PARAMS_N'],params['PARAMS_STRIPE_STEP']):
+    #     a_row_temp[j + 1 + 0 * params['PARAMS_N']] = UINT16_TO_LE(j)
+    #     a_row_temp[j + 1 + 1 * params['PARAMS_N']] = UINT16_TO_LE(j)    # Loading values in the little-endian order
+    #     a_row_temp[j + 1 + 2 * params['PARAMS_N']] = UINT16_TO_LE(j)
+    #     a_row_temp[j + 1 + 3 * params['PARAMS_N']] = UINT16_TO_LE(j)
+    max_tmp = 4 * params['PARAMS_N']
 
     for i in range(0,params['PARAMS_N'],4):
-        for j in range(0, params['PARAMS_N'], params['PARAMS_STRIPE_STEP']):
-            a_row_temp[j + 0 * params['PARAMS_N']] = UINT16_TO_LE(i+0)
-            a_row_temp[j + 1 * params['PARAMS_N']] = UINT16_TO_LE(i+1)  # Loading values in the little-endian order
-            a_row_temp[j + 2 * params['PARAMS_N']] = UINT16_TO_LE(i+2)
-            a_row_temp[j + 3 * params['PARAMS_N']] = UINT16_TO_LE(i+3)
+        # Loading values in the little-endian order
+        a_row_temp[:4 * params['PARAMS_N']:params['PARAMS_STRIPE_STEP']] = UINT16_TO_LE(i)
+        a_row_temp[    params['PARAMS_N']:max_tmp:params['PARAMS_STRIPE_STEP']] += 1
+        a_row_temp[2 * params['PARAMS_N']:max_tmp:params['PARAMS_STRIPE_STEP']] += 1
+        a_row_temp[3 * params['PARAMS_N']:max_tmp:params['PARAMS_STRIPE_STEP']] += 1
+
+        #
+        # for j in range(0, params['PARAMS_N'], params['PARAMS_STRIPE_STEP']):
+        #     a_row_temp[j + 0 * params['PARAMS_N']] = UINT16_TO_LE(i+0)
+        #     a_row_temp[j + 1 * params['PARAMS_N']] = UINT16_TO_LE(i+1)  # Loading values in the little-endian order
+        #     a_row_temp[j + 2 * params['PARAMS_N']] = UINT16_TO_LE(i+2)
+        #     a_row_temp[j + 3 * params['PARAMS_N']] = UINT16_TO_LE(i+3)
 
         a_row = frombuffer(cipher.encrypt(a_row_temp), dtype=uint16).copy()
+        a_row[:max_tmp] = LE_TO_UINT16(a_row[:max_tmp])
 
-        for k in range(4*params['PARAMS_N']):
-            a_row[k] = LE_TO_UINT16(a_row[k])
+        par_n = params['PARAMS_N']
+
+        sum_v = zeros(4, dtype=uint16)
 
         for k in range(params['PARAMS_NBAR']):
-            sum = zeros(4, dtype=uint16)
-            for j in range(params['PARAMS_N']):
-                # Matrix vector multiplication
-                sp = s[k*params['PARAMS_N'] + j]
-                sum[0] += a_row[0 * params['PARAMS_N'] + j] * sp # Go through lines with the same s
-                sum[1] += a_row[1 * params['PARAMS_N'] + j] * sp
-                sum[2] += a_row[2 * params['PARAMS_N'] + j] * sp
-                sum[3] += a_row[3 * params['PARAMS_N'] + j] * sp
+            # Matrix vector multiplication
+            s_vec = s[k * params['PARAMS_N']:k * params['PARAMS_N'] + params['PARAMS_N']]
 
-            out[(i + 0) * params['PARAMS_NBAR'] + k] += sum[0]
-            out[(i + 2) * params['PARAMS_NBAR'] + k] += sum[2]
-            out[(i + 1) * params['PARAMS_NBAR'] + k] += sum[1]
-            out[(i + 3) * params['PARAMS_NBAR'] + k] += sum[3]
+            # Go through four lines with same s
+            sum_v[0] = sum(a_row[:par_n] * s_vec)
+            sum_v[1] = sum(a_row[par_n:2 * par_n] * s_vec)
+            sum_v[2] = sum(a_row[2 * par_n:3 * par_n] * s_vec)
+            sum_v[3] = sum(a_row[3 * par_n:4 * par_n] * s_vec)
+
+            # for j in range(params['PARAMS_N']):
+            #
+            #     sum[0] += a_row[0 * params['PARAMS_N'] + j] * s[k*params['PARAMS_N'] + j] # Go through lines with the same s
+            #     sum[1] += a_row[1 * params['PARAMS_N'] + j] * s[k*params['PARAMS_N'] + j]
+            #     sum[2] += a_row[2 * params['PARAMS_N'] + j] * s[k*params['PARAMS_N'] + j]
+            #     sum[3] += a_row[3 * params['PARAMS_N'] + j] * s[k*params['PARAMS_N'] + j]
+
+            #out[ i * params['PARAMS_NBAR']   : i * params['PARAMS_NBAR'] + params['PARAMS_NBAR']] += sum_v[0]
+            #out[(i+2) * params['PARAMS_NBAR']:(i+2) * params['PARAMS_NBAR'] + params['PARAMS_NBAR']] += sum_v[2]
+            #out[(i+1) * params['PARAMS_NBAR']:(i+1) * params['PARAMS_NBAR'] + params['PARAMS_NBAR']] += sum_v[1]
+            #out[(i+3) * params['PARAMS_NBAR']:(i+3) * params['PARAMS_NBAR'] + params['PARAMS_NBAR']] += sum_v[3]
+
+            # out[(i + 0) * params['PARAMS_NBAR'] + k] += sum_v[0]
+            # out[(i + 2) * params['PARAMS_NBAR'] + k] += sum_v[2]
+            # out[(i + 1) * params['PARAMS_NBAR'] + k] += sum_v[1]
+            # out[(i + 3) * params['PARAMS_NBAR'] + k] += sum_v[3]
 
     # trace(f"s, size({len(s)}): \n\n")
     # tlist("s", s)
-    trace(f"e, size({len(e)}): \n\n")
-    tlist("e", e)
+    # trace(f"e, size({len(e)}): \n\n")
+    # tlist("e", e)
 
     trace(f"out, size({len(out)}): \n\n")
     tlist("out", out)

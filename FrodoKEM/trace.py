@@ -15,6 +15,6 @@ def tracelst(name, list):
     if debug_mode is True:
         print(name,": ",end="")
         for x in list:
-            print(x,", ", end="")
+            print(str(x)+", ", end="")
         print("\n\n")
 #
