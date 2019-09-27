@@ -2,6 +2,7 @@ from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, f
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
 from frodo_macrify import frodo_mul_add_as_plus_e
+from util import frodo_pack
 import secrets
 import trace
 
@@ -61,7 +62,13 @@ def crypto_kem_keypair(pk, sk,shake, **params):
 
     frodo_mul_add_as_plus_e(B, S, E, pk, **params)
 
-    tlist("shake_input_seedSE", shake_input_seedSE)
+    # Encode the second part of the public key
+    frodo_pack(pk_b, params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'],
+               B, params['PARAMS_N']*params['PARAMS_NBAR'], params['PARAMS_LOGQ'])
+
+    # trace("pk_b: ",len(pk_b))
+    # tlist("out", pk_b)
+    exit()
 #
 
 
