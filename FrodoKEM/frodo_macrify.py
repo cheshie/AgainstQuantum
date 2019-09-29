@@ -1,5 +1,5 @@
 import config
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split
+from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 import trace
@@ -23,7 +23,7 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
     # ALIGN_HEADER and FOOTER from config are used here
     a_row = zeros(4*params['PARAMS_N'],dtype=uint16)
 
-    out = e.copy()
+    copyto(out, e)
 
     # If USE_AES128_FOR_A defined
     a_row_temp = array(

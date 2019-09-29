@@ -38,17 +38,18 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     shake(pk_seedA, params['BYTES_SEED_A'], randomness_z, params['BYTES_SEED_A'])
 
     # Generate S and E, compute B = A*S + E. Generate A on-the-fly
-    shake_input_seedSE[0] = 0x5F;
+    shake_input_seedSE[0] = 0x5F
 
     # memcpy(dest, source, NUMBER-OF-BYTES) <== Carefully!
-    for bt in range(params['CRYPTO_BYTES']):
-        shake_input_seedSE[bt + 1] = randomness_seedSE[bt]
+    shake_input_seedSE[1:params['CRYPTO_BYTES']+1] = randomness_seedSE[:params['CRYPTO_BYTES']]
 
     # HEY IMPORTANT: THIS DOES NOT GET SHORTENED OUTSIDE FUNCTION!!!
     S_u8 = frombuffer(S.tobytes(), dtype=uint8).copy()
     sizeof_uint16 = 2
 
-    shake(S_u8, 2*params['PARAMS_N']*params['PARAMS_NBAR']*sizeof_uint16, shake_input_seedSE, 1 + params['CRYPTO_BYTES'])
+    shake(S_u8,2*params['PARAMS_N']*params['PARAMS_NBAR']*sizeof_uint16,
+          shake_input_seedSE, 1 + params['CRYPTO_BYTES'])
+
     S = frombuffer(S_u8.tobytes(), dtype=uint16).copy()
     E = S[params['PARAMS_N'] * params['PARAMS_NBAR']:]
 
@@ -66,9 +67,36 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     frodo_pack(pk_b, params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'],
                B, params['PARAMS_N']*params['PARAMS_NBAR'], params['PARAMS_LOGQ'])
 
-    # trace("pk_b: ",len(pk_b))
-    # tlist("out", pk_b)
-    exit()
+
+    # Add s, pk and S to the secret key
+    sk_S[:params['CRYPTO_BYTES']] = randomness_s[:params['CRYPTO_BYTES']]
+    sk_pk[:params['CRYPTO_PUBLICKEYBYTES']] = pk[:params['CRYPTO_PUBLICKEYBYTES']]
+
+    #Conver uint16 to little endian
+    S[:params['PARAMS_N']*params['PARAMS_NBAR']] =\
+        UINT16_TO_LE(S[:params['PARAMS_N']*params['PARAMS_NBAR']])
+
+    sk_S[:2 * params['PARAMS_N']*params['PARAMS_NBAR']] =\
+        S[:2 * params['PARAMS_N']*params['PARAMS_NBAR']]
+
+
+    tlist("sk[...]",sk[params['CRYPTO_BYTES']+params['CRYPTO_PUBLICKEYBYTES']+2*params['PARAMS_N']*params['PARAMS_NBAR']:])
+    trace("sk_pkh: ",len(sk_pkh))
+    tlist("sk_pkh",sk_pkh)
+    trace("\n\n\n\n\npk: ", len(pk))
+    tlist("pk", pk)
+
+    # Add H(pk) to the secret key
+    shake(sk_pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
+
+
+    # Cleanup
+    S[:params['PARAMS_N']*params['PARAMS_NBAR']] = 0
+    E[:params['PARAMS_N']*params['PARAMS_NBAR']] = 0
+    randomness[:2*params['CRYPTO_BYTES']] = 0
+    shake_input_seedSE[:1 + params['CRYPTO_BYTES']] = 0
+
+    return 0
 #
 
 

@@ -13,7 +13,10 @@ def trace(*what_to_trace, end=None):
 
 def tracelst(name, list):
     if debug_mode is True:
-        print(name,": ",end="")
+        if name == '':
+            print("tab: ", end="")
+        else:
+            print(name,": ",end="")
         for x in list:
             print(str(x)+", ", end="")
         print("\n\n")

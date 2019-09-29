@@ -72,11 +72,41 @@ int frodo_mul_test()
 	return 0;
 }
 
+int value_test()
+{
+	u_int16_t a = -1;
+	u_int8_t  b = -1;
+
+	printf("i => a: %i   b: %i\n",a,b);
+	printf("u => a: %u   b: %u\n\n\n",a,b);
+
+	u_int16_t w = 0;
+       	u_int16_t mask = (1 << 8) - 1;
+	int  nbits   = 8;
+	unsigned char bits = 7;
+	u_int8_t  n1   = w >> (bits-nbits);
+	unsigned char t = (w >> (bits-nbits)) & mask;
+
+	printf("(bits-nbits): %i\n",(bits-nbits));
+	printf("mask: %i\n",mask);
+	printf("w >> (...): %i\n",n1);
+	printf("(...) & mask: %i\n",n1 & mask);
+	printf("t: %i\n",t);
+
+
+	return 1;
+}
+
+
 
 int main(int argc, char *argv[])
 {
-	frodo_mul_test();
+//	frodo_mul_test();
+	int sk[3];
 
+	for(int i =0; i<3; i++)
+		printf("%i, ",sk[i]);
+//value_test();
 
 
 
