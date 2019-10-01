@@ -1,4 +1,4 @@
-from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer
+from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer, empty
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
 from frodo_macrify import frodo_mul_add_as_plus_e
@@ -26,8 +26,8 @@ def crypto_kem_keypair(pk, sk, shake, **params):
     E = S[params['PARAMS_N']*params['PARAMS_NBAR']:]
 
     rcount = 2 * params['CRYPTO_BYTES'] + params['BYTES_SEED_A']
-    randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
-    #randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
+    #randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
+    randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
 
     randomness_s = randomness
     randomness_seedSE = randomness[params['CRYPTO_BYTES']:]
@@ -97,7 +97,35 @@ def crypto_kem_keypair(pk, sk, shake, **params):
 
 
 def crypto_kem_enc(ct, ss, pk, shake, **params):
-    print(params['PARAMS_N'])
+    # FrodoKEM's key encapsulation
+    pk_seedA = pk
+    pk_b     = pk[params['BYTES_SEED_A']:]
+    ct_c1    = ct
+    ct_c2    = ct[:(params['PARAMS_LOGQ'] * params['PARAMS_N'] * params['PARAMS_NBAR'])//8]
+    B = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'],dtype=uint16)
+    V = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16) # Contains secret data
+    C = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
+
+    Bp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    Sp = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'], dtype=uint16) # contains secret data
+    Ep = Sp[params['PARAMS_N'] * params['PARAMS_NBAR']:] # Contains secret data
+    Epp= Sp[2 * params['PARAMS_N'] * params['PARAMS_NBAR']:] # Contains secret data
+    # TODO: Empy here, it might be needed to change into zeros for tests
+    G2in = empty(params['BYTES_PKHASH']+params['BYTES_MU'], dtype=uint8) # Contains secret data via mu
+    pkh  = G2in
+    mu   = G2in[params['BYTES_PKHASH']] # Contains secret data
+    G2out= empty(2 * params['CRYPTO_BYTES'], dtype=uint8) # Contains secret data
+    seedSE = G2out # Contains secret data
+    k = G2out[params['CRYPTO_BYTES']:] # Contains secret data
+    Fin    = empty(params['CRYPTO_CIPHERTEXTBYTES'] + params['CRYPTO_BYTES'], dtype=uint8) # Contains secret data via Fin_k
+    Fin_ct = Fin
+    Fin_k  = Fin[params['CRYPTO_CIPHERTEXTBYTES']:] # Contains secret data
+    shake_input_seedSE = empty(1 + params['CRYPTO_BYTES'], dtype=uint8) # Contains secret data
+
+    # pkh <- G_1(pk), generate random mu, compute (seedSE || k) = G_2(pkh || mu)
+
+
+
 
 
 def crypto_kem_dec(ct, ss, pk, shake, **params):
