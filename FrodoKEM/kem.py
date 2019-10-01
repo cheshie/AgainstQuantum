@@ -6,13 +6,13 @@ from util import frodo_pack
 import secrets
 import trace
 
-trace.debug_mode = True
-tlist = trace.tracelst
-trace = trace.trace
+trace.debug_mode = False
+trcl = trace.tracelst
+trc = trace.trace
 
-def crypto_kem_keypair(pk, sk,shake, **params):
-    # SHAKE IS DEFINED IN API_FRODO640 => its shake128
 
+#TODO: For tests, you must change empty() to zeros() in test_kem.py
+def crypto_kem_keypair(pk, sk, shake, **params):
     # Generate the secret values, the seed for S and E, and
     #the seed for the seed for A.Add seed_A to the public key
     pk_seedA = pk
@@ -26,8 +26,8 @@ def crypto_kem_keypair(pk, sk,shake, **params):
     E = S[params['PARAMS_N']*params['PARAMS_NBAR']:]
 
     rcount = 2 * params['CRYPTO_BYTES'] + params['BYTES_SEED_A']
-    #randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
-    randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
+    randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
+    #randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
 
     randomness_s = randomness
     randomness_seedSE = randomness[params['CRYPTO_BYTES']:]
@@ -63,32 +63,28 @@ def crypto_kem_keypair(pk, sk,shake, **params):
 
     frodo_mul_add_as_plus_e(B, S, E, pk, **params)
 
+
     # Encode the second part of the public key
     frodo_pack(pk_b, params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'],
                B, params['PARAMS_N']*params['PARAMS_NBAR'], params['PARAMS_LOGQ'])
 
 
     # Add s, pk and S to the secret key
-    sk_S[:params['CRYPTO_BYTES']] = randomness_s[:params['CRYPTO_BYTES']]
+    sk_s[:params['CRYPTO_BYTES']] = randomness_s[:params['CRYPTO_BYTES']]
+    # This is safe - sk_pk does get copy of range of els in pk
     sk_pk[:params['CRYPTO_PUBLICKEYBYTES']] = pk[:params['CRYPTO_PUBLICKEYBYTES']]
 
-    #Conver uint16 to little endian
+
+    #Convert uint16 to little endian
     S[:params['PARAMS_N']*params['PARAMS_NBAR']] =\
         UINT16_TO_LE(S[:params['PARAMS_N']*params['PARAMS_NBAR']])
 
     sk_S[:2 * params['PARAMS_N']*params['PARAMS_NBAR']] =\
-        S[:2 * params['PARAMS_N']*params['PARAMS_NBAR']]
+        frombuffer(S[:params['PARAMS_N']*params['PARAMS_NBAR']].tobytes(),dtype=uint8).copy()
 
-
-    tlist("sk[...]",sk[params['CRYPTO_BYTES']+params['CRYPTO_PUBLICKEYBYTES']+2*params['PARAMS_N']*params['PARAMS_NBAR']:])
-    trace("sk_pkh: ",len(sk_pkh))
-    tlist("sk_pkh",sk_pkh)
-    trace("\n\n\n\n\npk: ", len(pk))
-    tlist("pk", pk)
 
     # Add H(pk) to the secret key
     shake(sk_pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
-
 
     # Cleanup
     S[:params['PARAMS_N']*params['PARAMS_NBAR']] = 0

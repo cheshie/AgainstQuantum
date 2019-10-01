@@ -4,9 +4,9 @@ from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 import trace
 
-trace.debug_mode = True
-tlist = trace.tracelst
-trace = trace.trace
+trace.debug_mode = False
+trcl = trace.tracelst
+trc = trace.trace
 
 """
 * FrodoKEM: Learning with Errors Key Encapsulation

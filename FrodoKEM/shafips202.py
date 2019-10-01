@@ -1,9 +1,9 @@
 from numpy import empty, uint8, array, zeros, uint64, ulonglong
 import trace
 
-trace.debug_mode = True
-tlist = trace.tracelst
-trace = trace.trace
+trace.debug_mode = False
+trcl = trace.tracelst
+trc = trace.trace
 
 
 global SHAKE128_RATE
@@ -46,10 +46,6 @@ KeccakF_RoundConstants = array(
 )
 
 
-# TODO: CHECK IF variable is int, especially in loops !!!
-# TODO: if I pass these indexes, are they zeroized when needed?
-# PROBLEM2: Assume I send this pair: index and array
-# When I send them to other functions, they get their copies so every time they will be zeroed!
 def shake128(output, outlen, input_a, inlen):
     output_ref = output
 
@@ -83,7 +79,7 @@ def keccak_absorb(s, r, m, mlen, p):
 
     while mlen >= r:
         for i in range(r//8):
-            s[i] ^= load64(m,8 * i)
+            s[i] ^= load64(m[8 * i:])
 
         # no access here for now
         # trace("s: ")
@@ -96,7 +92,7 @@ def keccak_absorb(s, r, m, mlen, p):
 
         keccakf1600_state_permute(s)
         mlen -= r
-        m += r
+        m = m[r:]
 
     # why do you zero these here? t has length 200 and you zero 168.
     # Do we need pointer to current t here?

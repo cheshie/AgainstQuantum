@@ -40,8 +40,8 @@ if len(argv) == 1 or argv[1] == "FrodoKEM-640":
 
 
 class KEMValues():
-    pk = empty(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
-    sk = empty(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
+    pk = zeros(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
+    sk = zeros(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
     ss_encap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
     ss_decap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
     ct = empty(FrodoKEM640Params['CRYPTO_CIPHERTEXTBYTES'], dtype=uint8)
