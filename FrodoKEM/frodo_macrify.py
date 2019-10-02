@@ -76,8 +76,30 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
 #
 
 
-def frodo_mul_add_sa_plus_e(out, s, e, seed_A):
-    pass
+# TODO: Check datatypes here in params passed to this fun
+def frodo_mul_add_sa_plus_e(out, s, e, seed_A, **params):
+    # Generate-and-multiply: generate matrix A (N x N) column-wise, multiply by s' on the left.
+    # Inputs: s', e' (N_BAR x N)
+    # Output: out = s'*A + e' (N_BAR x N)
+    print("L: ",params['PARAMS_N']*params['PARAMS_NBAR'])
+    copyto(out, e)
+
+    a_cols   = zeros(params['PARAMS_N']*params['PARAMS_STRIPE_STEP'],dtype=uint16)
+    a_cols_t = zeros(params['PARAMS_N']*params['PARAMS_STRIPE_STEP'],dtype=uint16)
+    a_cols_temp = zeros(params['PARAMS_N']*params['PARAMS_STRIPE_STEP'], dtype=uint16)
+
+    # Create new EVP cipher object and pass key from pk
+    cipher = AES.new(seed_A[:16], AES.MODE_ECB)
+
+    a_cols_temp[:params['PARAMS_N']//params['PARAMS_STRIPE_STEP']:params['PARAMS_STRIPE_STEP']] =\
+        [UINT16_TO_LE(i) for i in range(params['PARAMS_N'])]
+
+    exit()
+
+
+
+
+
 #
 
 

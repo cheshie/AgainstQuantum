@@ -1,7 +1,7 @@
-from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer, empty
+from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer, empty, copyto
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
-from frodo_macrify import frodo_mul_add_as_plus_e
+from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e
 from util import frodo_pack
 import secrets
 import trace
@@ -10,6 +10,9 @@ trace.debug_mode = False
 trcl = trace.tracelst
 trc = trace.trace
 
+# TODO: About changing Numpy arrays type, you dont need to frombuffer().copy() and so!
+# TODO: What you need is array.dtype = uint8
+# TODO: https://stackoverflow.com/questions/4389517/in-place-type-conversion-of-a-numpy-array/4396247#4396247
 
 #TODO: For tests, you must change empty() to zeros() in test_kem.py
 def crypto_kem_keypair(pk, sk, shake, **params):
@@ -110,10 +113,10 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     Sp = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'], dtype=uint16) # contains secret data
     Ep = Sp[params['PARAMS_N'] * params['PARAMS_NBAR']:] # Contains secret data
     Epp= Sp[2 * params['PARAMS_N'] * params['PARAMS_NBAR']:] # Contains secret data
-    # TODO: Empy here, it might be needed to change into zeros for tests
+    # TODO: Empty here, it might be needed to change into zeros for tests
     G2in = empty(params['BYTES_PKHASH']+params['BYTES_MU'], dtype=uint8) # Contains secret data via mu
     pkh  = G2in
-    mu   = G2in[params['BYTES_PKHASH']] # Contains secret data
+    mu   = G2in[params['BYTES_PKHASH']:] # Contains secret data
     G2out= empty(2 * params['CRYPTO_BYTES'], dtype=uint8) # Contains secret data
     seedSE = G2out # Contains secret data
     k = G2out[params['CRYPTO_BYTES']:] # Contains secret data
@@ -123,6 +126,31 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     shake_input_seedSE = empty(1 + params['CRYPTO_BYTES'], dtype=uint8) # Contains secret data
 
     # pkh <- G_1(pk), generate random mu, compute (seedSE || k) = G_2(pkh || mu)
+    shake(pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
+    # Array must have same dimens, it does not send refs, only copy vals
+    copyto(mu,array([randbyte for randbyte in secrets.token_bytes(params['BYTES_MU'])], dtype=uint8))
+    shake(G2out, params['CRYPTO_BYTES']+params['CRYPTO_BYTES'], G2in, params['BYTES_PKHASH']+params['BYTES_MU'])
+
+    # Generate Sp and Ep, and compute Bp = Sp*A + Ep. Generate A on-the-fly
+    shake_input_seedSE[0] = 0x96
+    shake_input_seedSE[1:] = seedSE[params['CRYPTO_BYTES']:]
+    Sp.dtype = uint8
+    sizeof_uint16 = 2
+    shake(Sp, (2*params['PARAMS_N']+params['PARAMS_NBAR'])*params['PARAMS_NBAR']*sizeof_uint16,
+          shake_input_seedSE, 1+params['CRYPTO_BYTES'])
+    Sp.dtype=uint16
+    Sp[(2*params['PARAMS_N']+params['PARAMS_N'])*params['PARAMS_NBAR']:] = \
+        LE_TO_UINT16(Sp[(2*params['PARAMS_N']+params['PARAMS_N'])*params['PARAMS_NBAR']:])
+
+
+    frodo_sample_n(Sp, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
+    frodo_sample_n(Ep, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
+    frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA)
+
+    exit()
+#
+
+
 
 
 
@@ -130,3 +158,4 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
 
 def crypto_kem_dec(ct, ss, pk, shake, **params):
     print(params['PARAMS_N'])
+#
