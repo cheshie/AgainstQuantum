@@ -20,3 +20,6 @@
     
   
 6. After implementing KEM, try to use some protocol, like TLS or sth to use this algorithm in communication effectively
+
+7. TODO: src/sha3/keccak4x/KeccakP-1600-times4-SIMD256.c has some copyrights, check if any of the files have
+them as well, and make sure to paste them at the beginning

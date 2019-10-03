@@ -14,6 +14,8 @@ functions for FrodoKEM-640
 
 CRYPTO_ALGNAME = "FrodoKEM-640"
 
+
+# TODO: DELETE ALL 'PARAMS' from this dict and associated in other files???
 # Parameters for FrodoKEM-640
 FrodoKEM640Params = {
     'CRYPTO_SECRETKEYBYTES'  : 19888,     # sizeof(s) + 'CRYPTO_PUBLICKEYBYTES' + 2*'PARAMS_N'*'PARAMS_NBAR' + 'BYTES_PKHASH'
