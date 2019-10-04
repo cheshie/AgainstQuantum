@@ -6,7 +6,7 @@ from util import frodo_pack
 import secrets
 import trace
 
-trace.debug_mode = False
+trace.debug_mode = True
 trcl = trace.tracelst
 trc = trace.trace
 
@@ -145,7 +145,7 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
 
     frodo_sample_n(Sp, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
     frodo_sample_n(Ep, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
-    frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA)
+    frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA, **params)
 
     exit()
 #

@@ -1,7 +1,7 @@
 from numpy import empty, uint8, array, zeros, uint64, ulonglong
 import trace
 
-trace.debug_mode = False
+trace.debug_mode = True
 trcl = trace.tracelst
 trc = trace.trace
 

@@ -1,5 +1,5 @@
 global debug_mode
-debug_mode = False
+debug_mode = True
 
 
 def trace(*what_to_trace, end=None):
