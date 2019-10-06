@@ -128,23 +128,26 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     # pkh <- G_1(pk), generate random mu, compute (seedSE || k) = G_2(pkh || mu)
     shake(pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
     # Array must have same dimens, it does not send refs, only copy vals
-    copyto(mu,array([randbyte for randbyte in secrets.token_bytes(params['BYTES_MU'])], dtype=uint8))
+    # copyto(mu,array([randbyte for randbyte in secrets.token_bytes(params['BYTES_MU'])], dtype=uint8))
+    copyto(mu, array([54, 97, 58, 117, 209, 149, 232, 204, 121, 171, 37, 137, 113, 241, 36, 188], dtype=uint8))
     shake(G2out, params['CRYPTO_BYTES']+params['CRYPTO_BYTES'], G2in, params['BYTES_PKHASH']+params['BYTES_MU'])
 
     # Generate Sp and Ep, and compute Bp = Sp*A + Ep. Generate A on-the-fly
     shake_input_seedSE[0] = 0x96
-    shake_input_seedSE[1:] = seedSE[params['CRYPTO_BYTES']:]
+    shake_input_seedSE[1:] = seedSE[:params['CRYPTO_BYTES']]
+
     Sp.dtype = uint8
     sizeof_uint16 = 2
     shake(Sp, (2*params['PARAMS_N']+params['PARAMS_NBAR'])*params['PARAMS_NBAR']*sizeof_uint16,
           shake_input_seedSE, 1+params['CRYPTO_BYTES'])
-    Sp.dtype=uint16
+    Sp.dtype = uint16
+
     Sp[(2*params['PARAMS_N']+params['PARAMS_N'])*params['PARAMS_NBAR']:] = \
         LE_TO_UINT16(Sp[(2*params['PARAMS_N']+params['PARAMS_N'])*params['PARAMS_NBAR']:])
 
-
     frodo_sample_n(Sp, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
     frodo_sample_n(Ep, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
+
     frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA, **params)
 
     exit()

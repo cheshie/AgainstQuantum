@@ -101,11 +101,17 @@ int value_test()
 
 int main(int argc, char *argv[])
 {
-//	frodo_mul_test();
-	int sk[3];
+	int sk[3] = {0};
+	int *p    = &sk;
+	p = {1,2};
+	for (int i=0; i<3; i++)
+		printf("%i, ",p[i]);
 
-	for(int i =0; i<3; i++)
-		printf("%i, ",sk[i]);
+//	frodo_mul_test();
+	//int sk[3];
+
+	//for(int i =0; i<3; i++)
+	//	printf("%i, ",sk[i]);
 //value_test();
 
 

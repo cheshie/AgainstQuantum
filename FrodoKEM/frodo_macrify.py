@@ -79,42 +79,11 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
 #
 
 
-# TODO: Check datatypes here in params passed to this fun
 def frodo_mul_add_sa_plus_e(out, s, e, seed_A, **params):
     # Generate-and-multiply: generate matrix A (N x N) column-wise, multiply by s' on the left.
     # Inputs: s', e' (N_BAR x N)
     # Output: out = s'*A + e' (N_BAR x N)
-    #  TODO: Check if these arrays (out especially) is correct
     copyto(out, e[:params['PARAMS_N']*params['PARAMS_NBAR']])
-
-    # printf("out: ");
-    # for(int i=0; i<5120 ; i++)
-    # {
-    #     printf("%i, ",out[i]);
-    # }
-    # printf("\n\n");
-    # printf("s: ");
-    # for(int i=0; i<10304 ; i++)
-    # {
-    #     printf("%i, ",s[i]);
-    # }
-    # printf("\n\n");
-    # printf("e: ");
-    # for(int i=0; i<5184 ; i++)
-    # {
-    #     printf("%i, ",e[i]);
-    # }
-    # printf("\n\n");
-    # exit(0);
-
-    # NONE OF THESE IS CORRECT!!! Why?
-    trc("out: ", len(out))
-    trcl("out", out)
-    trc("\n\n\ns: ", len(s))
-    trcl("s", s)
-    trc("\n\n\ne: ", len(e))
-    trcl("e", e)
-    exit()
 
     a_cols   = zeros(params['PARAMS_N']*params['PARAMS_STRIPE_STEP'],dtype=uint16)
     a_cols_t = zeros(params['PARAMS_N']*params['PARAMS_STRIPE_STEP'],dtype=uint16)
@@ -126,100 +95,125 @@ def frodo_mul_add_sa_plus_e(out, s, e, seed_A, **params):
     # Loading values in the little - endian order
     a_cols_temp[:params['PARAMS_N'] * params['PARAMS_STRIPE_STEP']:params['PARAMS_STRIPE_STEP']] =\
         array([UINT16_TO_LE(i) for i in range(params['PARAMS_N'])], dtype=uint16)
-    kk = 0
 
-    # Go through A's columns, 8 (== PARAMS_STRIPE_STEP) columns at a time
-    # Loading values in the little - endian order
-    a_cols_temp[1:params['PARAMS_N']*params['PARAMS_STRIPE_STEP']:params['PARAMS_STRIPE_STEP']] = \
-        array([UINT16_TO_LE(i) for i in range(0,params['PARAMS_N'] * params['PARAMS_STRIPE_STEP'],params['PARAMS_STRIPE_STEP'])], dtype=uint16)
+    for kk in range(0,params['PARAMS_N'],params['PARAMS_STRIPE_STEP']):
+        # Go through A's columns, 8 (== PARAMS_STRIPE_STEP) columns at a time
+        # Loading values in the little - endian order
+        a_cols_temp[1:params['PARAMS_N']*params['PARAMS_STRIPE_STEP']:params['PARAMS_STRIPE_STEP']] = \
+            array([UINT16_TO_LE(kk)] * params['PARAMS_N'], dtype=uint16)
 
-    a_cols = frombuffer(cipher.encrypt(a_cols_temp), dtype=uint16).copy()
+        a_cols = frombuffer(cipher.encrypt(a_cols_temp), dtype=uint16).copy()
 
-    # Transpose a_cols to have access to it in the column - major order.
-    a_cols_t = LE_TO_UINT16(transpose(a_cols))
+        # Transpose a_cols to have access to it in the column - major order.
+        # https: // docs.scipy.org / doc / numpy / reference / generated / numpy.ndarray.flatten.html
+        # TODO: FORTRAN STYLE?
+        a_cols_t = transpose(a_cols.reshape((params['PARAMS_N'],a_cols.shape[0]//params['PARAMS_N']))).flatten()
 
-    # Temporary values to make below lines shorter
-    max_tmp = 4 * params['PARAMS_N']
-    par_n = params['PARAMS_N']
-    par_nbar = params['PARAMS_NBAR']
+        # Temporary values to make below lines shorter
+        par_n    = params['PARAMS_N']
+        par_st   = params['PARAMS_STRIPE_STEP']
+        par_pl   = params['PARAMS_PARALLEL']
 
-    sum_v = zeros((params['PARAMS_PARALLEL'], par_nbar), dtype=uint16)
-    # Go through four lines with same s
-    s_vec = s[:(par_nbar - 1) * par_n + par_n]
+        for i in range(params['PARAMS_NBAR']):
+            s_vec = array(s[i * par_n:i * par_n + par_n], dtype=uint16)
 
-    for p in range(0,params['PARAMS_STRIPE_STEP'],params['PARAMS_PARALLEL']):
-        # Matrix vector multiplication
-        a_cols_0 = array(split(tile(a_cols_t[p * par_n: p * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
-        a_cols_1 = array(split(tile(a_cols_t[(p+1) * par_n: (p+1) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
-        a_cols_2 = array(split(tile(a_cols_t[(p+2) * par_n: (p+2) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
-        a_cols_3 = array(split(tile(a_cols_t[(p+3) * par_n: (p+3) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
+            a_cols_0_temp = array(split(a_cols_t[:par_st * par_n + par_n], par_st))[range(0,par_st,par_pl)].flatten()
+            trc("a_cols: ",len(a_cols_0_temp))
+            a_cols_0 = array(split(a_cols_0_temp * tile(s_vec,par_st//par_pl), par_st//par_pl),dtype = uint16)
 
-        # Generate sum for each row
-        sum_v[0] = sum(a_cols_0[:par_nbar], axis=1)
-        sum_v[1] = sum(a_cols_1[:par_nbar], axis=1)
-        sum_v[2] = sum(a_cols_2[:par_nbar], axis=1)
-        sum_v[3] = sum(a_cols_3[:par_nbar], axis=1)
+            a_cols_1_temp = array(split(a_cols_t[par_n:(par_st+1) * par_n + par_n], par_st))[range(0, par_st, par_pl)].flatten()
+            trc("a_cols: ", len(a_cols_1_temp))
+            #a_cols_1 = array(split(a_cols_1_temp * tile(s_vec, par_st // par_pl), par_st // par_pl), dtype=uint16)
 
-        # assign sum vectors to output intervals
-        out[kk + p + 0: par_nbar + kk + p + 0] += sum_v[0]
-        out[kk + p + 2: par_nbar + kk + p + 2] += sum_v[2]
-        out[kk + p + 1: par_nbar + kk + p + 1] += sum_v[1]
-        out[kk + p + 3: par_nbar + kk + p + 3] += sum_v[3]
+            a_cols_2_temp = array(split(a_cols_t[2 * par_n:(par_st+2) * par_n + par_n], par_st))[range(0, par_st, par_pl)].flatten()
+            trc("a_cols: ", len(a_cols_2_temp))
+            a_cols_2 = array(split(a_cols_2_temp * tile(s_vec, par_st // par_pl), par_st // par_pl), dtype=uint16)
+
+            a_cols_3_temp = array(split(a_cols_t[3 * par_n:(par_st+3) * par_st * par_n + par_n], par_st))[range(0, par_st, par_pl)].flatten()
+            a_cols_3 = array(split(a_cols_3_temp * tile(s_vec, par_st // par_pl), par_st // par_pl), dtype=uint16)
+
+            sum_0 = array(sum(a_cols_0[:par_n], axis=1), dtype=uint16)
+            sum_1 = array(sum(a_cols_1[:par_n], axis=1), dtype=uint16)
+            sum_2 = array(sum(a_cols_2[:par_n], axis=1), dtype=uint16)
+            sum_3 = array(sum(a_cols_3[:par_n], axis=1), dtype=uint16)
+
+            out[i * par_n + kk + range(0,par_st,par_pl) + 0] += sum_0
+            out[i * par_n + kk + range(0,par_st,par_pl) + 2] += sum_2
+            out[i * par_n + kk + range(0,par_st,par_pl) + 1] += sum_1
+            out[i * par_n + kk + range(0,par_st,par_pl) + 3] += sum_3
+
+            exit()
+
+            for k in range(0,params['PARAMS_STRIPE_STEP'], params['PARAMS_PARALLEL']):
+                sum_v = zeros(params['PARAMS_PARALLEL'],dtype=uint16)
+
+                #sum_v[0] += sum(s_vec * a_cols_t[(k) * par_n:(k) * par_n + par_n])
+                #sum_v[1] += sum(s_vec * a_cols_t[(k+1) * par_n:(k+1) * par_n + par_n])
+                #sum_v[2] += sum(s_vec * a_cols_t[(k + 2) * par_n:(k + 2) * par_n + par_n])
+                #sum_v[3] += sum(s_vec * a_cols_t[(k + 3) * par_n:(k + 3) * par_n + par_n])
+                # for j in range(params['PARAMS_N']):
+                #     # matrix vector multip
+                #     # sum[0] += sp * a_cols_t[(k)*par_n+j]
+                #     sum[1] += sp * a_cols_t[(k+1) * par_n + j]
+                #     sum[2] += sp * a_cols_t[(k+2) * par_n + j]
+                #     sum[3] += sp * a_cols_t[(k+3) * par_n + j]
+
+                trc("sum: ",sum_v[0])
+                out[i * par_n + kk + k + 0] += sum_v[0]
+                out[i * par_n + kk + k + 2] += sum_v[2]
+                out[i * par_n + kk + k + 1] += sum_v[1]
+                out[i * par_n + kk + k + 3] += sum_v[3]
 
 
+            #print(sum_v[0])
+            #print(sum_a)
+            exit()
+
+        trc("\n\n\nout: ", len(out))
+        trcl("out", out)
+        exit()
 
 
+        # sum_v = zeros((params['PARAMS_PARALLEL'], par_nbar), dtype=uint16)
+        # # Go through four lines with same s
+        # s_vec = s[:(par_nbar - 1) * par_n + par_n]
+        #
+        # for k in range(0,params['PARAMS_STRIPE_STEP'],params['PARAMS_PARALLEL']):
+        #     # Matrix vector multiplication
+        #     a_cols_0 = array(split(tile(a_cols_t[k * par_n: k * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
+        #     a_cols_1 = array(split(tile(a_cols_t[(k+1) * par_n: (k+1) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
+        #     a_cols_2 = array(split(tile(a_cols_t[(k+2) * par_n: (k+2) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
+        #     a_cols_3 = array(split(tile(a_cols_t[(k+3) * par_n: (k+3) * par_n + par_n], par_nbar) * s_vec, par_nbar), dtype=uint16)
+        #
+        #     # Generate sum for each row
+        #     sum_v[0] = sum(a_cols_0[:par_nbar], axis=1)
+        #     sum_v[1] = sum(a_cols_1[:par_nbar], axis=1)
+        #     sum_v[2] = sum(a_cols_2[:par_nbar], axis=1)
+        #     sum_v[3] = sum(a_cols_3[:par_nbar], axis=1)
+        #
+        #     # trcl("SUM", sum_v)
+        #
+        #     # assign sum vectors to output intervals
+        #     out[kk + k + 0: par_nbar + kk + k + 0] += sum_v[0]
+        #     trcl("out: ",out[kk + k + 0: par_nbar + kk + k + 0])
+        #     exit()
+        #     out[kk + k + 2: par_nbar + kk + k + 2] += sum_v[2]
+        #     out[kk + k + 1: par_nbar + kk + k + 1] += sum_v[1]
+        #     out[kk + k + 3: par_nbar + kk + k + 3] += sum_v[3]
 
-    # Using vector intrinsics
-    # TODO: MATRIX - VECTOR multip => CAN I use instead numpy????
-    # for i in range(params['PARAMS_NBAR']):
-    #     for k in range(0,params['PARAMS_STRIPE_STEP'],params['PARAMS_PARALLEL']):
-    #         sum = empty(8 * params['PARAMS_PARALLEL'], dtype=uint32)
-    #         # __m256i a[PARAMS_PARALLEL], b, acc[PARAMS_PARALLEL];
-    #         a = empty(params['PARAMS_PARALLEL'], dtype=uint16)
-    #         acc = zeros(params['PARAMS_PARALLEL'], dtype=uint16)
-    #
-    #         # Matrix - vector multiplication
-    #         for j in range(0,params['PARAMS_N'],16):
-    #             b = s[i*params['PARAMS_N'] + j]
-    #             print("b: ",b)
-    #             exit()
-    #             a[0] = a_cols_t[(k+0)*params['PARAMS_N']+ j]
-    #             a[0] += b
-    #             acc[0] = a[0] + b
-    #             a[1] = a_cols_t[(k + 1) * params['PARAMS_N'] + j]
-    #             a[1] += b
-    #             acc[1] = a[1] + acc[1]
-    #             a[2] = a_cols_t[(k + 2) * params['PARAMS_N'] + j]
-    #             a[2] += b
-    #             acc[2] = a[2] + acc[2]
-    #             a[3] = a_cols_t[(k + 3) * params['PARAMS_N'] + j]
-    #             a[3] += b
-    #             acc[3] = a[3] + acc[3]
-    #
-    #         sum[8 * 0] = acc[0]
-    #         out[i*params['PARAMS_N'] + kk + k + 0] += \
-    #             sum[8*0 + 0] + sum[8*0 + 1] + sum[8*0 + 2] + sum[8*0 + 3] + sum[8*0 + 4] + sum[8*0 + 5] + sum[8*0 + 6] + sum[8*0 + 7]
-    #         sum[8 * 1] = acc[1]
-    #         out[i * params['PARAMS_N'] + kk + k + 1] += \
-    #             sum[8*1 + 0] + sum[8*1 + 1] + sum[8*1 + 2] + sum[8*1 + 3] + sum[8*1 + 4] + sum[8*1 + 5] + sum[8*1 + 6] + sum[8*1 + 7]
-    #         sum[8 * 2] = acc[2]
-    #         out[i * params['PARAMS_N'] + kk + k + 2] += \
-    #             sum[8*2 + 0] + sum[8*2 + 1] + sum[8*2 + 2] + sum[8*2 + 3] + sum[8*2 + 4] + sum[8*2 + 5] + sum[8*2 + 6] + sum[8*2 + 7]
-    #         sum[8 * 3] = acc[3]
-    #         out[i * params['PARAMS_N'] + kk + k + 2] += \
-    #             sum[8*3 + 0] + sum[8*3 + 1] + sum[8*3 + 2] + sum[8*3 + 3] + sum[8*3 + 4] + sum[8*3 + 5] + sum[8*3 + 6] + sum[8*3 + 7]
-
+    # NONE OF THESE IS CORRECT!!! Why?
+    trc("out: ", len(out))
+    trcl("out", out)
+    trc("\n\n\ns: ", len(s))
+    trcl("s", s)
+    trc("\n\n\ne: ", len(e))
+    trcl("e", e)
+    exit()
 
     print("out: ",len(out))
     print("out: ",out)
 
     exit()
-
-
-
-
-
 #
 
 
