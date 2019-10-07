@@ -149,6 +149,13 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     frodo_sample_n(Ep, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
 
     frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA, **params)
+    frodo_pack(ct_c1,
+               (params['PARAMS_LOGQ']*params['PARAMS_N']*params['PARAMS_NBAR'])//8,
+               Bp,
+               params['PARAMS_N']*params['PARAMS_NBAR'],
+               params['PARAMS_LOGQ'])
+
+    # Generate Epp, and compute V = Sp * B + Epp
 
     exit()
 #
