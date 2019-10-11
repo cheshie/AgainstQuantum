@@ -1,8 +1,8 @@
 from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer, empty, copyto
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
-from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e
-from util import frodo_pack
+from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, frodo_mul_add_sb_plus_e
+from util import frodo_pack, frodo_unpack
 import secrets
 import trace
 
@@ -105,9 +105,9 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     pk_b     = pk[params['BYTES_SEED_A']:]
     ct_c1    = ct
     ct_c2    = ct[:(params['PARAMS_LOGQ'] * params['PARAMS_N'] * params['PARAMS_NBAR'])//8]
-    B = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'],dtype=uint16)
-    V = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16) # Contains secret data
-    C = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
+    B = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    V = zeros(params['PARAMS_NBAR'] ** 2, dtype=uint16) # Contains secret data
+    C = zeros(params['PARAMS_NBAR'] ** 2, dtype=uint16)
 
     Bp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
     Sp = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'], dtype=uint16) # contains secret data
@@ -151,11 +151,21 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     frodo_mul_add_sa_plus_e(Bp, Sp, Ep, pk_seedA, **params)
     frodo_pack(ct_c1,
                (params['PARAMS_LOGQ']*params['PARAMS_N']*params['PARAMS_NBAR'])//8,
-               Bp,
-               params['PARAMS_N']*params['PARAMS_NBAR'],
+               Bp, params['PARAMS_N']*params['PARAMS_NBAR'],
                params['PARAMS_LOGQ'])
 
+
     # Generate Epp, and compute V = Sp * B + Epp
+    frodo_sample_n(Epp, params['PARAMS_NBAR']**2, **params)
+    frodo_unpack(B, params['PARAMS_N']*params['PARAMS_NBAR'], pk_b,
+                 params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'], params['PARAMS_LOGQ'])
+
+    frodo_mul_add_sb_plus_e(V, B, Sp, Epp, **params)
+
+
+    trc("B: ",len(V))
+    trcl("B", V)
+
 
     exit()
 #

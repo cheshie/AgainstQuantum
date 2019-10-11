@@ -8,8 +8,8 @@ import trace
 """
 
 trace.debug_mode = True
-tlist = trace.tracelst
-trace = trace.trace
+trcl = trace.tracelst
+trc = trace.trace
 
 
 def frodo_pack(out, outlen, invec, inlen, lsb):
@@ -57,9 +57,8 @@ def frodo_pack(out, outlen, invec, inlen, lsb):
 
 
 def frodo_unpack(out, outlen, invec, inlen, lsb):
-    # Pack the input uint16 vector into a char output vector,
-    # copying lsb bits from each input element.
-    # If inlen * lsb / 8 > outlen, only outlen * 8 bits are copied.
+    # Unpack the input char vector into a uint16_t output vector, copying lsb bits
+    # for each output element from input. outlen must be at least ceil(inlen * 8 / lsb).
     out[outlen:] = 0
 
     i = 0 # whole uint16_t already filled in
@@ -80,10 +79,10 @@ def frodo_unpack(out, outlen, invec, inlen, lsb):
 
         b = uint8(0) # Bits in out[i] already filled in
         while b < lsb:
-            nbits  = min(lsb-b, bits)
-            mask   = (1 << nbits) - 1 # uint16 should be here?
+            nbits  = min(lsb - b, bits)
+            mask   = uint16((1 << nbits) - 1)
             t      = (w >> uint8(bits - nbits)) & mask # the bits to copy from w to out
-            out[i] = out[i] + (t << (8 - b - nbits))
+            out[i] = out[i] + (t << (lsb - b - nbits))
             b    += nbits
             bits -= nbits
             w &= ~(mask << bits) # not strictly necessary, mostly for debugging
@@ -95,6 +94,6 @@ def frodo_unpack(out, outlen, invec, inlen, lsb):
                     j+= 1
                 else:
                     break # The input vector is exhausted
-            if b == lsb: # out[i] is filled in
-                i+= 1
+        if b == lsb: # out[i] is filled in
+            i+= 1
 #

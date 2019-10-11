@@ -1,6 +1,6 @@
 import config
 # TODO: Clean up these imports and split them into lines
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty
+from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 import trace
@@ -144,8 +144,44 @@ def frodo_mul_bs(out, b, s):
 #
 
 
-def frodo_mul_add_sb_plus_e(out, b, s, e):
-    pass
+def frodo_mul_add_sb_plus_e(out, b, s, e, **params):
+    # Multiply by s on the left
+    # Inputs: b(N x N_BAR), s(N_BAR x N), e(N_BAR x N_BAR)
+    # Output: out = s * b + e(N_BAR x N_BAR)
+
+    pr_n   = params['PARAMS_N']
+    pr_nb  = params['PARAMS_NBAR']
+    pr_lq  = params['PARAMS_LOGQ']
+
+    print("sum: ",(pr_nb*pr_n))
+    print("s2: ",len(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb+pr_n]))
+    print("s2: ", tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1).shape)
+    print(tile(s[:pr_nb * pr_n + pr_n], pr_nb).shape)
+    print(tile(array_split(s,pr_n),pr_nb).shape) # <== this good, but how to make it longer?
+    trcl("",tile(array_split(s,pr_n),pr_nb).flatten().shape)
+    exit()
+
+    out[:pr_nb**2 + pr_nb] = e[:pr_nb**2 + pr_nb]
+
+    out[:pr_nb**2 + pr_nb] += sum(array(split(tile(split(s, pr_n), pr_nb)
+                                                 * tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1), pr_nb * (pr_nb))),axis=1)
+
+
+    # out[:pr_nb**2 + pr_nb] += sum(array(split(tile(s[:pr_nb * pr_n + pr_n], pr_nb)
+    #                                              * tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1), pr_nb * (pr_nb))),axis=1)
+
+    out[:pr_nb**2 + pr_nb] = bitwise_and(out[:pr_nb**2 + pr_nb], ((1 << pr_lq) - 1))
+
+    # exit()
+
+# for k in range(pr_nb):
+#     out[k * pr_nb: k * pr_nb + pr_nb] = e[k * pr_nb: k * pr_nb + pr_nb]
+#
+#     out[k * pr_nb: k * pr_nb + pr_nb] += sum(split(tile(s[k * pr_n:k * pr_n + pr_n], pr_nb)
+#                                                    * array(split(b, pr_n)).flatten('F')[:pr_n * pr_nb], pr_nb),
+#                                              axis=1)
+#
+#     out[k * pr_nb: k * pr_nb + pr_nb] = bitwise_and(out[k * pr_nb: k * pr_nb + pr_nb], ((1 << pr_lq) - 1))
 #
 
 
