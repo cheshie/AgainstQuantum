@@ -3,6 +3,7 @@ import config
 from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split, hstack
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
+from math import ceil
 import trace
 
 trace.debug_mode = True
@@ -149,43 +150,37 @@ def frodo_mul_add_sb_plus_e(out, b, s, e, **params):
     # Inputs: b(N x N_BAR), s(N_BAR x N), e(N_BAR x N_BAR)
     # Output: out = s * b + e(N_BAR x N_BAR)
 
+    # The following code does exactly the same as this in comments, but with no loops
+    # Leaving for reference
+    # for k in range(pr_nb):
+    #     out[k * pr_nb: k * pr_nb + pr_nb] = e[k * pr_nb: k * pr_nb + pr_nb]
+    #
+    #     out[k * pr_nb: k * pr_nb + pr_nb] += sum(split(tile(s[k * pr_n:k * pr_n + pr_n], pr_nb)
+    #                                                    * array(split(b, pr_n)).flatten('F')[:pr_n * pr_nb], pr_nb),
+    #                                              axis=1)
+    #
+    #     out[k * pr_nb: k * pr_nb + pr_nb] = bitwise_and(out[k * pr_nb: k * pr_nb + pr_nb], ((1 << pr_lq) - 1))
+    #
+
+    # Reference params for shorter lines
     pr_n   = params['PARAMS_N']
     pr_nb  = params['PARAMS_NBAR']
     pr_lq  = params['PARAMS_LOGQ']
-    s_range= (pr_n*pr_nb*(pr_nb+1)) // pr_nb
 
-    print("sum: ",(pr_nb*pr_n))
-    print("s2: ",len(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb+pr_n]))
-    print("s2: ", tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1).shape)
-    # import operator
-    # from functools import reduce
-    print(hstack(tile(array_split(s[:s_range],pr_n),pr_nb)))
-    #print(tile(array(array_split(s,pr_n),dtype=uint16),pr_nb).flatten()[0]) # <== this good, but how to make it longer?
-    # print(s.shape)
-    #trcl("",[x for x in tile(array_split(s,pr_n),pr_nb)])
-    # exit()
+    # Calculate how many elements from s take, knowing that it should have size 40960
+    # which is 5120 * 8 => meaning to be able to divide it into proper sub-vectors
+    s_range = (pr_n * pr_nb * (pr_nb)) // pr_nb
 
     out[:pr_nb**2 + pr_nb] = e[:pr_nb**2 + pr_nb]
 
-    out[:pr_nb**2 + pr_nb] += sum(array(split(hstack(tile(array_split(s[:s_range],pr_n),pr_nb))
-                                                 * tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1), pr_nb * (pr_nb))),axis=1)
+    # array_split divides into n vectors, but what if we want to have vectors of n
+    # len, and as many of them as array_split could divide vector into? Thus use of ceil(...)
+    s_vec = hstack(tile(array_split(s[:s_range],ceil(s_range/pr_n)), pr_nb))
+    # Split b vector into pr_n vectors and transpose them ('F').
+    b_vec = tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb)
 
-
-    # out[:pr_nb**2 + pr_nb] += sum(array(split(tile(s[:pr_nb * pr_n + pr_n], pr_nb)
-    #                                              * tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1), pr_nb * (pr_nb))),axis=1)
-
+    out[:pr_nb**2 + pr_nb] += sum(array(split(s_vec * b_vec, pr_nb**2)),axis=1)
     out[:pr_nb**2 + pr_nb] = bitwise_and(out[:pr_nb**2 + pr_nb], ((1 << pr_lq) - 1))
-
-    # exit()
-
-# for k in range(pr_nb):
-#     out[k * pr_nb: k * pr_nb + pr_nb] = e[k * pr_nb: k * pr_nb + pr_nb]
-#
-#     out[k * pr_nb: k * pr_nb + pr_nb] += sum(split(tile(s[k * pr_n:k * pr_n + pr_n], pr_nb)
-#                                                    * array(split(b, pr_n)).flatten('F')[:pr_n * pr_nb], pr_nb),
-#                                              axis=1)
-#
-#     out[k * pr_nb: k * pr_nb + pr_nb] = bitwise_and(out[k * pr_nb: k * pr_nb + pr_nb], ((1 << pr_lq) - 1))
 #
 
 

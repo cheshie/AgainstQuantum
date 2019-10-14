@@ -166,6 +166,12 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
     trc("B: ",len(V))
     trcl("B", V)
 
+    # Encode mu, and compute C = V + enc(mu)(mod q)
+    #mu.dtype = uint16 # CHeck this line!
+    #frodo_key_encode(C, mu)
+    #mu.dtype = uint8  # CHeck this line!
+
+
 
     exit()
 #
