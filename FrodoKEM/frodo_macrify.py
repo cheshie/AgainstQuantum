@@ -1,6 +1,6 @@
 import config
 # TODO: Clean up these imports and split them into lines
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split
+from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split, hstack
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 import trace
@@ -152,18 +152,22 @@ def frodo_mul_add_sb_plus_e(out, b, s, e, **params):
     pr_n   = params['PARAMS_N']
     pr_nb  = params['PARAMS_NBAR']
     pr_lq  = params['PARAMS_LOGQ']
+    s_range= (pr_n*pr_nb*(pr_nb+1)) // pr_nb
 
     print("sum: ",(pr_nb*pr_n))
     print("s2: ",len(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb+pr_n]))
     print("s2: ", tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1).shape)
-    print(tile(s[:pr_nb * pr_n + pr_n], pr_nb).shape)
-    print(tile(array_split(s,pr_n),pr_nb).shape) # <== this good, but how to make it longer?
-    trcl("",tile(array_split(s,pr_n),pr_nb).flatten().shape)
-    exit()
+    # import operator
+    # from functools import reduce
+    print(hstack(tile(array_split(s[:s_range],pr_n),pr_nb)))
+    #print(tile(array(array_split(s,pr_n),dtype=uint16),pr_nb).flatten()[0]) # <== this good, but how to make it longer?
+    # print(s.shape)
+    #trcl("",[x for x in tile(array_split(s,pr_n),pr_nb)])
+    # exit()
 
     out[:pr_nb**2 + pr_nb] = e[:pr_nb**2 + pr_nb]
 
-    out[:pr_nb**2 + pr_nb] += sum(array(split(tile(split(s, pr_n), pr_nb)
+    out[:pr_nb**2 + pr_nb] += sum(array(split(hstack(tile(array_split(s[:s_range],pr_n),pr_nb))
                                                  * tile(array(split(b, pr_n)).flatten('F')[:pr_n*pr_nb],pr_nb+1), pr_nb * (pr_nb))),axis=1)
 
 
