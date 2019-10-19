@@ -1,7 +1,8 @@
 from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, frombuffer, empty, copyto
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
-from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, frodo_mul_add_sb_plus_e
+from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, \
+    frodo_mul_add_sb_plus_e, frodo_key_encode, frodo_add
 from util import frodo_pack, frodo_unpack
 import secrets
 import trace
@@ -162,16 +163,14 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
 
     frodo_mul_add_sb_plus_e(V, B, Sp, Epp, **params)
 
-
-    trc("B: ",len(V))
-    trcl("B", V)
-
     # Encode mu, and compute C = V + enc(mu)(mod q)
-    #mu.dtype = uint16 # CHeck this line!
-    #frodo_key_encode(C, mu)
-    #mu.dtype = uint8  # CHeck this line!
+    mu.dtype = uint16
+    frodo_key_encode(C, mu, **params)
+    mu.dtype = uint8
+    frodo_add(C, V, C, **params)
 
-
+    trc("C", len(C))
+    trcl("C", C) # ADD SUB by the way
 
     exit()
 #

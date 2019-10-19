@@ -1,9 +1,11 @@
 import config
 # TODO: Clean up these imports and split them into lines
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split, hstack
+from numpy import zeros, uint16, frombuffer, uint32, uint8, uint64,array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split, hstack
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 from math import ceil
+from itertools import accumulate
+from functools import reduce
 import trace
 
 trace.debug_mode = True
@@ -171,6 +173,7 @@ def frodo_mul_add_sb_plus_e(out, b, s, e, **params):
     # which is 5120 * 8 => meaning to be able to divide it into proper sub-vectors
     s_range = (pr_n * pr_nb * (pr_nb)) // pr_nb
 
+    # Take range of elements from e vector
     out[:pr_nb**2 + pr_nb] = e[:pr_nb**2 + pr_nb]
 
     # array_split divides into n vectors, but what if we want to have vectors of n
@@ -184,8 +187,13 @@ def frodo_mul_add_sb_plus_e(out, b, s, e, **params):
 #
 
 
-def frodo_add(out, a, b):
-    pass
+def frodo_add(out, a, b, **params):
+    # Add a and b
+    # Inputs: a, b(N_BAR x N_BAR)
+    # Output: c = a + b
+
+    out[:params['PARAMS_NBAR']**2] = (a[:params['PARAMS_NBAR']**2] + b[:params['PARAMS_NBAR']**2]) \
+                                     & ((1<<params['PARAMS_LOGQ'])-1)
 #
 
 
@@ -194,8 +202,30 @@ def frodo_sub(out, a, b):
 #
 
 
-def frodo_key_encode():
-    pass
+# Encoding
+def frodo_key_encode(out, invec, **params):
+    # Shorter names:
+    par_eb = params['PARAMS_EXTRACTED_BITS']
+    par_nb = params['PARAMS_NBAR']
+    par_q  = params['PARAMS_LOGQ']
+
+    # encoding parameters
+    npieces_word = 8
+    nwords = (par_nb ** 2) // 8
+    mask = uint64((1<<par_eb) - 1)
+
+    # Extract u8 vec from u16 vec and convert it to u64
+    u8v = array(frombuffer(invec.tobytes(),dtype=uint8)[:nwords * par_eb + par_eb], dtype=uint64)
+
+    # (8 * j) part
+    temp = array(list(range(par_eb)) * (len(u8v)//par_eb), dtype=uint64) * 8
+    temp = u8v << temp
+    temp = array(reduce(lambda a,b: a | b, split(array(array_split(temp, len(temp) // par_eb)).flatten('F'), par_eb)), dtype=uint64)
+
+    # Assign temp vector to out vector, doing some bit operations on the former
+    temp = tile(split(temp, temp.shape[0]), npieces_word)
+    temp = array([list(accumulate(x, lambda a,b: a >> uint64(par_eb))) for x in temp],dtype=uint16)
+    out[:nwords * npieces_word] = (temp.flatten() & mask) << (par_q - par_eb)
 #
 
 
