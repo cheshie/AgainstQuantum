@@ -197,8 +197,14 @@ def frodo_add(out, a, b, **params):
 #
 
 
-def frodo_sub(out, a, b):
-    pass
+def frodo_sub(out, a, b, **params):
+    # Subs a and b
+    # Inputs: a, b(N_BAR x N_BAR)
+    # Output: c = a - b
+
+    out[:params['PARAMS_NBAR'] ** 2] = (a[:params['PARAMS_NBAR'] ** 2] - b[:params['PARAMS_NBAR'] ** 2]) \
+                                       & ((1 << params['PARAMS_LOGQ']) - 1)
+
 #
 
 
