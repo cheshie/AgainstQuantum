@@ -142,8 +142,31 @@ def frodo_mul_add_sa_plus_e(out, s, e, seed_A, **params):
 #
 
 
-def frodo_mul_bs(out, b, s):
-    pass
+def frodo_mul_bs(out, b, s, **params):
+    # Multiply by s on the right
+    # Inputs: b(N_BAR x N), s(N x N_BAR)
+    # Output: out = b * s(N_BAR x N_BAR)
+
+    # Reference params for shorter lines
+    pr_n = params['PARAMS_N']
+    pr_nb = params['PARAMS_NBAR']
+    pr_lq = params['PARAMS_LOGQ']
+
+    # Calculate how many elements from s take, knowing that it should have size 40960
+    # which is 5120 * 8 => meaning to be able to divide it into proper sub-vectors
+    s_range = (pr_n * pr_nb * (pr_nb)) // pr_nb
+
+    # Take range of elements from e vector
+    out[:pr_nb ** 2 + pr_nb] = 0
+
+    # array_split divides into n vectors, but what if we want to have vectors of n
+    # len, and as many of them as array_split could divide vector into? Thus use of ceil(...)
+    b_vec = hstack(tile(array_split(b[:s_range], ceil(s_range / pr_n)), pr_nb))
+    # Split b vector into pr_n vectors and transpose them ('F').
+    s_vec = tile(s[:pr_nb*pr_n + pr_n], pr_nb)
+
+    out[:pr_nb ** 2 + pr_nb] += sum(array(split(b_vec * s_vec, pr_nb ** 2)), axis=1)
+    out[:pr_nb ** 2 + pr_nb] = bitwise_and(out[:pr_nb ** 2 + pr_nb], ((1 << pr_lq) - 1))
 #
 
 
@@ -235,6 +258,15 @@ def frodo_key_encode(out, invec, **params):
 #
 
 
-def frodo_key_decode():
-    pass
+# Decoding
+def frodo_key_decode(out, invec, **params):
+    # Shorter names:
+    par_eb = params['PARAMS_EXTRACTED_BITS']
+    par_nb = params['PARAMS_NBAR']
+    par_q = params['PARAMS_LOGQ']
+
+    npieces_word = 8
+    nwords = (par_nb ** 2) // 8
+
+
 #

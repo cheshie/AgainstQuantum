@@ -49,15 +49,12 @@ FrodoKEM640Params['CDF_TABLE_LEN'] = CDF_TABLE_LEN
 
 # FrodoKEM-640 functions
 def crypto_kem_keypair_Frodo640(pk, sk):
-    print("Accessed funtion - executing: ")
     crypto_kem_keypair(pk, sk, shake, **FrodoKEM640Params)
 
 
 def crypto_kem_enc_Frodo640(ct, ss, pk):
-    print("Accessed funtion - executing: ")
     crypto_kem_enc(ct, ss, pk, shake, **FrodoKEM640Params)
 
 
 def crypto_kem_dec_Frodo640(ss, ct, sk):
-    print("Accessed funtion - executing: ")
-    crypto_kem_enc(ss, ct, sk, shake, **FrodoKEM640Params)
+    crypto_kem_dec(ss, ct, sk, shake, **FrodoKEM640Params)

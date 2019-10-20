@@ -3,7 +3,7 @@ from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, \
 from config import LE_TO_UINT16, UINT16_TO_LE
 from noise import frodo_sample_n
 from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, \
-    frodo_mul_add_sb_plus_e, frodo_key_encode, frodo_add
+    frodo_mul_add_sb_plus_e, frodo_key_encode, frodo_add, frodo_mul_bs, frodo_sub, frodo_key_decode
 from util import frodo_pack, frodo_unpack
 import secrets
 import trace
@@ -188,5 +188,55 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
 
 
 def crypto_kem_dec(ss, ct, sk, shake, **params):
-    pass
+    # FrodoKEM's key decapsulation
+    B  = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    Bp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    W  = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)  # Contains secret data
+    C  = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
+    CC = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
+
+    BBp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    Sp  = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR'] * params['PARAMS_NBAR']), dtype=uint16)
+    Ep  = Sp[params['PARAMS_N'] * params['PARAMS_NBAR']:]  # Contains secret data
+    Epp = Sp[2 * params['PARAMS_N'] * params['PARAMS_NBAR']:]  # Contains secret data
+
+    ct_c1 = ct
+    ct_c2 = ct[(params['PARAMS_LOGQ'] * params['PARAMS_N'] * params['PARAMS_NBAR']) // 8:]
+    sk_s  = sk
+    sk_pk = sk[params['CRYPTO_BYTES']:]
+    # TODO: IS THAT OKAY?
+    sk_S  = sk[params['CRYPTO_BYTES'] + params['CRYPTO_PUBLICKEYBYTES']:] ; sk_S.dtype = uint16
+    # TODO: EMPTY NOT ZEROS HERE
+    S = empty(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
+    sk_pkh = sk[params['CRYPTO_BYTES'] + params['CRYPTO_PUBLICKEYBYTES'] + 2 * params['PARAMS_N'] * params['PARAMS_NBAR']:]
+    pk_seedA = sk_pk
+    pk_b = sk_pk[params['BYTES_SEED_A']:]
+
+    G2in = empty(params['BYTES_PKHASH'] + params['BYTES_MU'], dtype=uint8) # contains secret data via muprime
+    pkh  = G2in
+    muprime = G2in[params['BYTES_PKHASH']:] # contains secret data
+    G2out   = empty(2 * params['CRYPTO_BYTES'], dtype=uint8) # contains secret data
+    seedSEprime = G2out # contains secret data
+    kprime = G2out[params['CRYPTO_BYTES']:] # contains secret data
+    Fin    = empty(params['CRYPTO_CIPHERTEXTBYTES'] + params['CRYPTO_BYTES']) # contains secret data via Fin_k
+    Fin_ct = Fin
+    Fin_k  = Fin[params['CRYPTO_CIPHERTEXTBYTES']:] # contains secret data
+    shake_input_seedSEprime = empty(1 + params['CRYPTO_BYTES'], dtype=uint8) # contains secret data
+
+    S[:params['PARAMS_N']*params['PARAMS_NBAR']] = LE_TO_UINT16(sk_S[:params['PARAMS_N']*params['PARAMS_NBAR']])
+
+    # Compute W = C - Bp * S(mod q), and decode the randomness mu
+    frodo_unpack(Bp, params['PARAMS_N']*params['PARAMS_NBAR'],
+        ct_c1, (params['PARAMS_LOGQ']*params['PARAMS_N']*params['PARAMS_NBAR'])//8, params['PARAMS_LOGQ'])
+    frodo_unpack(C, params['PARAMS_NBAR'] * params['PARAMS_NBAR'],
+        ct_c2, (params['PARAMS_LOGQ'] * params['PARAMS_NBAR'] ** 2) // 8, params['PARAMS_LOGQ'])
+
+    # Check all params
+    frodo_mul_bs(W, Bp, S, **params)
+    frodo_sub(W, C, W)
+    muprime.dtype = uint16
+    frodo_key_decode(muprime, W) ; muprime.dtype = uint8
+
+    trc("Bp: ", len(W))
+    trcl("Bp", W)
 #
