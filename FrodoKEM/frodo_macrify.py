@@ -1,6 +1,7 @@
 import config
 # TODO: Clean up these imports and split them into lines
-from numpy import zeros, uint16, frombuffer, uint32, uint8, uint64,array, sum, tile, split, copyto, transpose, empty, bitwise_and, array_split, hstack
+from numpy import zeros, uint16, frombuffer, uint32, uint8, uint64,array, sum, tile,\
+    split, copyto, transpose, empty, bitwise_and, array_split, hstack, repeat
 from Crypto.Cipher import AES
 from config import UINT16_TO_LE, LE_TO_UINT16
 from math import ceil
@@ -267,6 +268,21 @@ def frodo_key_decode(out, invec, **params):
 
     npieces_word = 8
     nwords = (par_nb ** 2) // 8
+    maskex = uint16((1 << par_eb) - 1)
+    maskq  = uint16((1 << par_q) - 1)
+    out.dtype = uint8 # instead of uint8 pos
 
+    # temp = floor(in*2^{-11}=0.5)
+    temp = split(((invec[:nwords * npieces_word] & maskq) +
+                  (1 << (par_q - par_eb - 1))) >> (par_q - par_eb), npieces_word)
 
+    # for each iteration of the top (i) loop arr has 8 elements, reduce them to 1
+    templong = [reduce(lambda a,b: a | b, (x & maskex) << (par_eb * array(range(npieces_word)))) for x in temp]
+
+    # repeat each element of templong for par_eb second inner loop, and repeat also second vector to match
+    out[: nwords * par_eb] = \
+             (repeat(templong, par_eb) >> (8 * tile(range(par_eb), npieces_word))) & 0xFF
+
+    # out dtype is back uint16
+    out.dtype=uint16
 #

@@ -233,10 +233,9 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
 
     # Check all params
     frodo_mul_bs(W, Bp, S, **params)
-    frodo_sub(W, C, W)
+    frodo_sub(W, C, W, **params)
     muprime.dtype = uint16
-    frodo_key_decode(muprime, W) ; muprime.dtype = uint8
+    frodo_key_decode(muprime, W, **params) ; muprime.dtype = uint8
 
-    trc("Bp: ", len(W))
-    trcl("Bp", W)
+    # Generate (seedSE' || k') = G_2(pkh || mu')
 #
