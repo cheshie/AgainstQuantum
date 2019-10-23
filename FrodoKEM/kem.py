@@ -230,12 +230,73 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
         ct_c1, (params['PARAMS_LOGQ']*params['PARAMS_N']*params['PARAMS_NBAR'])//8, params['PARAMS_LOGQ'])
     frodo_unpack(C, params['PARAMS_NBAR'] * params['PARAMS_NBAR'],
         ct_c2, (params['PARAMS_LOGQ'] * params['PARAMS_NBAR'] ** 2) // 8, params['PARAMS_LOGQ'])
-
-    # Check all params
     frodo_mul_bs(W, Bp, S, **params)
     frodo_sub(W, C, W, **params)
     muprime.dtype = uint16
     frodo_key_decode(muprime, W, **params) ; muprime.dtype = uint8
 
     # Generate (seedSE' || k') = G_2(pkh || mu')
+    pkh[:params['BYTES_PKHASH']] = sk_pkh[:params['BYTES_PKHASH']]
+    shake(G2out, 2 * params['CRYPTO_BYTES'], G2in, params['BYTES_PKHASH'] + params['BYTES_MU'])
+
+    # Generate Sp and Ep, and compute BBp = Sp * A + Ep. Generate A on-the-fly
+    shake_input_seedSEprime[0] = 0x96
+    shake_input_seedSEprime[1:params['CRYPTO_BYTES'] + 1] = seedSEprime[:params['CRYPTO_BYTES']]
+    Sp.dtype = uint8
+    sizeof_uint16 = 2
+
+    trc("Sp: ", (2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16)
+    trcl("Sp", Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16])
+    exit()
+
+    shake(Sp, (2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16,
+          shake_input_seedSEprime, 1 + params['CRYPTO_BYTES']) ; Sp.dtype = uint16
+    Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR']] =\
+        LE_TO_UINT16(Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR']])
+
+    frodo_sample_n(Sp, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
+    frodo_sample_n(Ep, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
+    frodo_mul_add_as_plus_e(BBp, Sp, Ep, pk_seedA)
+
+    # Generate Epp and compute W = Sp*B + Epp
+    frodo_sample_n(Ep, params['PARAMS_NBAR'] ** 2, **params)
+    frodo_unpack(B, params['PARAMS_N']*params['PARAMS_NBAR'],
+                 pk_b, params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'], params['PARAMS_LOGQ'])
+    frodo_mul_add_sb_plus_e(W, B, Sp, Epp, **params)
+
+    # Encode mu and compute CC = W + enc(mu') (mod q)
+    muprime.dtype = uint16
+    frodo_key_encode(CC, muprime, **params); muprime.dtype = uint8
+    frodo_add(CC, W, CC, **params)
+
+    # Prepare input to F
+    Fin_ct[:params['CRYPTO_CIPHERTEXTBYTES']] = ct[:params['CRYPTO_CIPHERTEXTBYTES']]
+
+    # Reducing BBp modulo q
+    BBp[:params['PARAMS_N']*params['PARAMS_NBAR']] =\
+        BBp[:params['PARAMS_N']*params['PARAMS_NBAR']] & ((1 << params['PARAMS_LOGQ']) - 1)
+
+    # Is (Bp == BBp & C == CC) == true
+    if Bp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']] == BBp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']] and\
+        C[:2 * params['PARAMS_N'] ** 2] == CC[:2 * params['PARAMS_N'] ** 2]:
+        # Load k' to do ss = F(ct || k')
+        Fin_k[:params['CRYPTO_BYTES']] = kprime[:params['CRYPTO_BYTES']]
+    else:
+        # Load s to do ss = F(ct || s)
+        Fin_k[:params['CRYPTO_BYTES']] = sk_s[:params['CRYPTO_BYTES']]
+
+    shake(ss, params['CRYPTO_BYTES'], Fin, params['CRYPTO_CIPHERTEXTBYTES'] + params['CRYPTO_BYTES'])
+
+    # Cleanup
+    W[:params['PARAMS_NBAR'] ** 2] = 0
+    Sp[:params['PARAMS_NBAR'] * params['PARAMS_N']] = 0
+    S[:params['PARAMS_NBAR'] * params['PARAMS_N']] = 0
+    Ep[:params['PARAMS_NBAR'] * params['PARAMS_N']] = 0
+    Epp[:params['PARAMS_NBAR'] ** 2] = 0
+    muprime[:params['BYTES_MU']] = 0
+    G2out[:2 * params['CRYPTO_BYTES']] = 0
+    Fin_k[:params['CRYPTO_BYTES']] = 0
+    shake_input_seedSEprime[:1 + params['CRYPTO_BYTES']]
+
+    return 0
 #
