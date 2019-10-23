@@ -28,10 +28,15 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
     # Inputs: s, e(N x N_BAR)
     # Output: out = A * s + e(N x N_BAR)
 
+    # Temporary values to make below lines shorter
+    max_tmp = 4 * params['PARAMS_N']
+    par_n = params['PARAMS_N']
+    par_nbar = params['PARAMS_NBAR']
+
     # ALIGN_HEADER and FOOTER from config are used here
     a_row = zeros(4*params['PARAMS_N'],dtype=uint16)
 
-    copyto(out, e)
+    copyto(out[:par_n * par_nbar], e[:par_n * par_nbar])
 
     # If USE_AES128_FOR_A defined
     a_row_temp = array(
@@ -42,11 +47,6 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
 
     # Create new EVP cipher object and pass key from pk
     cipher = AES.new(seed_A[:16], AES.MODE_ECB)
-
-    # Temporary values to make below lines shorter
-    max_tmp = 4 * params['PARAMS_N']
-    par_n = params['PARAMS_N']
-    par_nbar = params['PARAMS_NBAR']
 
     for i in range(0,par_n,4):
         # Loading values in the little-endian order

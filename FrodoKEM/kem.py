@@ -191,12 +191,12 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     # FrodoKEM's key decapsulation
     B  = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
     Bp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
-    W  = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)  # Contains secret data
-    C  = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
-    CC = zeros(params['PARAMS_NBAR'] * params['PARAMS_NBAR'], dtype=uint16)
+    W  = zeros(params['PARAMS_NBAR'] ** 2, dtype=uint16)  # Contains secret data
+    C  = zeros(params['PARAMS_NBAR'] ** 2, dtype=uint16)
+    CC = zeros(params['PARAMS_NBAR'] ** 2, dtype=uint16)
 
     BBp = zeros(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
-    Sp  = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR'] * params['PARAMS_NBAR']), dtype=uint16)
+    Sp  = zeros((2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'], dtype=uint16)
     Ep  = Sp[params['PARAMS_N'] * params['PARAMS_NBAR']:]  # Contains secret data
     Epp = Sp[2 * params['PARAMS_N'] * params['PARAMS_NBAR']:]  # Contains secret data
 
@@ -244,19 +244,15 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     shake_input_seedSEprime[1:params['CRYPTO_BYTES'] + 1] = seedSEprime[:params['CRYPTO_BYTES']]
     Sp.dtype = uint8
     sizeof_uint16 = 2
-
-    trc("Sp: ", (2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16)
-    trcl("Sp", Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16])
-    exit()
-
     shake(Sp, (2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR'] * sizeof_uint16,
           shake_input_seedSEprime, 1 + params['CRYPTO_BYTES']) ; Sp.dtype = uint16
     Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR']] =\
         LE_TO_UINT16(Sp[:(2 * params['PARAMS_N'] + params['PARAMS_NBAR']) * params['PARAMS_NBAR']])
-
     frodo_sample_n(Sp, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
     frodo_sample_n(Ep, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
-    frodo_mul_add_as_plus_e(BBp, Sp, Ep, pk_seedA)
+
+    # TODO: changed important line here!
+    frodo_mul_add_as_plus_e(BBp, Sp, Ep, pk_seedA, **params)
 
     # Generate Epp and compute W = Sp*B + Epp
     frodo_sample_n(Ep, params['PARAMS_NBAR'] ** 2, **params)
@@ -277,8 +273,8 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
         BBp[:params['PARAMS_N']*params['PARAMS_NBAR']] & ((1 << params['PARAMS_LOGQ']) - 1)
 
     # Is (Bp == BBp & C == CC) == true
-    if Bp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']] == BBp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']] and\
-        C[:2 * params['PARAMS_N'] ** 2] == CC[:2 * params['PARAMS_N'] ** 2]:
+    if Bp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']].all() == BBp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']].all() and\
+        C[:2 * params['PARAMS_N'] ** 2].all() == CC[:2 * params['PARAMS_N'] ** 2].all():
         # Load k' to do ss = F(ct || k')
         Fin_k[:params['CRYPTO_BYTES']] = kprime[:params['CRYPTO_BYTES']]
     else:
