@@ -1,4 +1,3 @@
-from numpy import ushort
 import os
 
 """

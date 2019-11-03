@@ -1,13 +1,15 @@
-import config
-# TODO: Clean up these imports and split them into lines
-from numpy import zeros, uint16, frombuffer, uint32, uint8, uint64,array, sum, tile,\
-    split, copyto, transpose, empty, bitwise_and, array_split, hstack, repeat
-from Crypto.Cipher import AES
-from config import UINT16_TO_LE, LE_TO_UINT16
-from math import ceil
-from itertools import accumulate
 from functools import reduce
-import trace
+from itertools import accumulate
+
+from Crypto.Cipher import AES
+from math import ceil
+from numpy import zeros, uint16, frombuffer, uint8, uint64, array, sum, tile, \
+    split, copyto, transpose, bitwise_and, array_split, hstack, repeat#, empty
+
+from MISC import trace
+from src.config import UINT16_TO_LE, LE_TO_UINT16
+
+empty = zeros
 
 trace.debug_mode = True
 trcl = trace.tracelst
@@ -36,7 +38,11 @@ def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
     # ALIGN_HEADER and FOOTER from config are used here
     a_row = zeros(4*params['PARAMS_N'],dtype=uint16)
 
-    copyto(out[:par_n * par_nbar], e[:par_n * par_nbar])
+    copyto(out, e[:par_n * par_nbar])
+
+    # trc("tab: ", len(out))
+    # trcl("tab", out)
+    # exit()
 
     # If USE_AES128_FOR_A defined
     a_row_temp = array(

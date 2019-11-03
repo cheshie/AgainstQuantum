@@ -1,10 +1,10 @@
-from numpy import empty, uint8, array, zeros, uint64, ulonglong
-import trace
+from numpy import uint8, array, zeros, uint64, ulonglong, copyto
+
+from MISC import trace
 
 trace.debug_mode = True
 trcl = trace.tracelst
 trc = trace.trace
-
 
 global SHAKE128_RATE
 global SHAKE256_RATE
@@ -70,58 +70,24 @@ def shake128(output, outlen, input_a, inlen):
 #
 
 
-# possible implementation:
-# https: // github.com / zjtone / keccak - python / blob / master / Keccak.py
-# This one is python3 wrapper written in c and doesn't match my needs: https://pypi.org/project/pysha3/#downloads
 def keccak_absorb(s, r, m, mlen, p):
     t = zeros(200, dtype=uint8)
-    # TODO: mlen here is usingned long long int => should i use modified numpy
 
     while mlen >= r:
         for i in range(r//8):
             s[i] ^= load64(m[8 * i:])
-
-        # no access here for now
-        # trace("s: ")
-        # for x in s:
-        #     trace(s, ", ", end="")
-        # trace("\n\n")
-        # l1-=1
-        # if l1 == 0:
-        #     exit(0)
-
         keccakf1600_state_permute(s)
         mlen -= r
         m = m[r:]
 
-    # why do you zero these here? t has length 200 and you zero 168.
-    # Do we need pointer to current t here?
-    for i in range(r):
-        t[i] = 0
+    t[:r] = 0
+    t[:mlen] = m[:mlen]
 
-    for i in range(mlen):
-        t[i] = m[i]
-
-    # In c, there is ++i in loop, here mlen must be assigned manually
-    i = mlen
-
-    t[i] = p
+    t[mlen] = p
     t[r - 1] |= uint64(128)
 
     for i in range(r//8):
         s[i] ^= load64(t[8 * i:])
-#
-
-
-def keccak_squeezeblocks(h, nblocks, s, r):
-    h_ref = h
-
-    while nblocks > 0:
-        keccakf1600_state_permute(s)
-
-        for i in range(r>>3):
-            store64(h_ref[8*i:], s[i])
-        h_ref = h_ref[r:]
 #
 
 
@@ -157,32 +123,9 @@ def store64(x, u):
 def keccakf1600_state_permute(state):
     ROL = lambda a,offset: (a << uint64(offset)) ^ (a >> uint64(64-offset))
 
-    # # copyFromState(A, state)
-    Aba = state[ 0]
-    Abe = state[ 1]
-    Abi = state[ 2]
-    Abo = state[ 3]
-    Abu = state[ 4]
-    Aga = state[ 5]
-    Age = state[ 6]
-    Agi = state[ 7]
-    Ago = state[ 8]
-    Agu = state[ 9]
-    Aka = state[10]
-    Ake = state[11]
-    Aki = state[12]
-    Ako = state[13]
-    Aku = state[14]
-    Ama = state[15]
-    Ame = state[16]
-    Ami = state[17]
-    Amo = state[18]
-    Amu = state[19]
-    Asa = state[20]
-    Ase = state[21]
-    Asi = state[22]
-    Aso = state[23]
-    Asu = state[24]
+    # CopyFromState(A, state)
+    Aba,Abe,Abi,Abo,Abu,Aga,Age,Agi,Ago,Agu,Aka,Ake,Aki,\
+    Ako,Aku,Ama,Ame,Ami,Amo,Amu,Asa,Ase,Asi,Aso,Asu = state
 
     for round in range(0,NROUNDS, 2):
         # prepareTheta
@@ -375,31 +318,7 @@ def keccakf1600_state_permute(state):
         Aso =   BCo ^((~BCu)&  BCa )
         Asu =   BCu ^((~BCa)&  BCe )
 
-    # copy_to_state(state, A)
-    state[0] = Aba
-    state[1] = Abe
-    state[2] = Abi
-    state[3] = Abo
-    state[4] = Abu
-    state[5] = Aga
-    state[6] = Age
-    state[7] = Agi
-    state[8] = Ago
-    state[9] = Agu
-    state[10] = Aka
-    state[11] = Ake
-    state[12] = Aki
-    state[13] = Ako
-    state[14] = Aku
-    state[15] = Ama
-    state[16] = Ame
-    state[17] = Ami
-    state[18] = Amo
-    state[19] = Amu
-    state[20] = Asa
-    state[21] = Ase
-    state[22] = Asi
-    state[23] = Aso
-    state[24] = Asu
-
+    # Copy_to_state(state, A)
+    copyto(state, array([Aba,Abe,Abi,Abo,Abu,Aga,Age,Agi,Ago,Agu,Aka,Ake,Aki,Ako,Aku,Ama,\
+    Ame,Ami,Amo,Amu,Asa,Ase,Asi,Aso,Asu]))
 #

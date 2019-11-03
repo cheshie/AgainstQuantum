@@ -26,3 +26,9 @@ them as well, and make sure to paste them at the beginning
 
 # TODO: Add AVX support to execute code faster
 https://www.codeproject.com/Articles/874396/Crunching-Numbers-with-AVX-and-AVX
+
+HYLA:
+* optymalization of the code will take time - what do i do?
+* start new algorithm, or rather leave it for later or never?
+* start making gui app for it or leave it as it is?
+* include in my dissertation analysis of the entire library with these algorithms

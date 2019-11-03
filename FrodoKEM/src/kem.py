@@ -1,19 +1,19 @@
-from numpy import array, zeros, uint8, uint16, array_equal, uint64, ulonglong, \
-    frombuffer, empty, copyto
-from config import LE_TO_UINT16, UINT16_TO_LE
-from noise import frodo_sample_n
-from frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, \
-    frodo_mul_add_sb_plus_e, frodo_key_encode, frodo_add, frodo_mul_bs, frodo_sub, frodo_key_decode
-from util import frodo_pack, frodo_unpack
+from numpy import array, zeros, uint8, uint16, frombuffer, copyto#, empty
 import secrets
-import trace
+from MISC import trace
+from src.config import LE_TO_UINT16, UINT16_TO_LE
+from src.frodo_macrify import frodo_mul_add_as_plus_e, frodo_mul_add_sa_plus_e, \
+    frodo_mul_add_sb_plus_e, frodo_key_encode, frodo_add, frodo_mul_bs, frodo_sub, frodo_key_decode
+from src.noise import frodo_sample_n
+from src.util import frodo_pack, frodo_unpack
+
+empty = zeros
 
 trace.debug_mode = True
 trcl = trace.tracelst
 trc = trace.trace
 
 
-#TODO: For tests, you must change empty() to zeros() in test_kem.py
 def crypto_kem_keypair(pk, sk, shake, **params):
     # Generate the secret values, the seed for S and E, and
     #the seed for the seed for A.Add seed_A to the public key
@@ -28,54 +28,40 @@ def crypto_kem_keypair(pk, sk, shake, **params):
     E = S[params['PARAMS_N']*params['PARAMS_NBAR']:]
 
     rcount = 2 * params['CRYPTO_BYTES'] + params['BYTES_SEED_A']
-    #randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
-    randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53, 59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211, 127, 74, 32, 175, 61, 154], dtype=uint8)
-
+    randomness =  array([randbyte for randbyte in secrets.token_bytes(rcount)], dtype=uint8)
+    # randomness = randomness1.copy()
+    # trcl("randomness", randomness)
+    # randomness = array([195, 42, 203, 181, 78, 183, 217, 4, 51, 106, 200, 157, 72, 124, 179, 143, 30, 209, 61, 196, 53,
+    #                     59, 43, 115, 97, 172, 58, 185, 177, 163, 253, 110, 18, 55, 177, 14, 46, 108, 28, 107, 104, 211,
+    #                     127, 74, 32, 175, 61, 154], dtype=uint8)
     randomness_s = randomness
     randomness_seedSE = randomness[params['CRYPTO_BYTES']:]
     randomness_z = randomness[2*params['CRYPTO_BYTES']:]
     shake_input_seedSE = zeros(1 + params['CRYPTO_BYTES'],dtype=uint8)
-
-    # AFTER This function randomness_z is much shorter - has only  16 places. Why?
     shake(pk_seedA, params['BYTES_SEED_A'], randomness_z, params['BYTES_SEED_A'])
 
     # Generate S and E, compute B = A*S + E. Generate A on-the-fly
     shake_input_seedSE[0] = 0x5F
-
-    # memcpy(dest, source, NUMBER-OF-BYTES) <== Carefully!
     shake_input_seedSE[1:params['CRYPTO_BYTES']+1] = randomness_seedSE[:params['CRYPTO_BYTES']]
+    S.dtype=uint8; sizeof_uint16 = 2
 
-    # HEY IMPORTANT: THIS DOES NOT GET SHORTENED OUTSIDE FUNCTION!!!
-    S_u8 = frombuffer(S.tobytes(), dtype=uint8).copy()
-    sizeof_uint16 = 2
+    shake(S,2*params['PARAMS_N']*params['PARAMS_NBAR']*sizeof_uint16,
+          shake_input_seedSE, 1 + params['CRYPTO_BYTES']); S.dtype=uint16
 
-    shake(S_u8,2*params['PARAMS_N']*params['PARAMS_NBAR']*sizeof_uint16,
-          shake_input_seedSE, 1 + params['CRYPTO_BYTES'])
-
-    S = frombuffer(S_u8.tobytes(), dtype=uint16).copy()
-    E = S[params['PARAMS_N'] * params['PARAMS_NBAR']:]
-
-    for i in range(2*params['PARAMS_N']*params['PARAMS_NBAR']):
-        S[i] = UINT16_TO_LE(S[i])
-
+    S = UINT16_TO_LE(S)
 
     frodo_sample_n(S, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
     frodo_sample_n(E, params['PARAMS_N']*params['PARAMS_NBAR'], **params)
-
-
     frodo_mul_add_as_plus_e(B, S, E, pk, **params)
-
 
     # Encode the second part of the public key
     frodo_pack(pk_b, params['CRYPTO_PUBLICKEYBYTES'] - params['BYTES_SEED_A'],
                B, params['PARAMS_N']*params['PARAMS_NBAR'], params['PARAMS_LOGQ'])
 
-
     # Add s, pk and S to the secret key
     sk_s[:params['CRYPTO_BYTES']] = randomness_s[:params['CRYPTO_BYTES']]
     # This is safe - sk_pk does get copy of range of els in pk
     sk_pk[:params['CRYPTO_PUBLICKEYBYTES']] = pk[:params['CRYPTO_PUBLICKEYBYTES']]
-
 
     #Convert uint16 to little endian
     S[:params['PARAMS_N']*params['PARAMS_NBAR']] =\
@@ -83,7 +69,6 @@ def crypto_kem_keypair(pk, sk, shake, **params):
 
     sk_S[:2 * params['PARAMS_N']*params['PARAMS_NBAR']] =\
         frombuffer(S[:params['PARAMS_N']*params['PARAMS_NBAR']].tobytes(),dtype=uint8).copy()
-
 
     # Add H(pk) to the secret key
     shake(sk_pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
@@ -126,9 +111,10 @@ def crypto_kem_enc(ct, ss, pk, shake, **params):
 
     # pkh <- G_1(pk), generate random mu, compute (seedSE || k) = G_2(pkh || mu)
     shake(pkh, params['BYTES_PKHASH'], pk, params['CRYPTO_PUBLICKEYBYTES'])
-    # Array must have same dimens, it does not send refs, only copy vals
-    # copyto(mu,array([randbyte for randbyte in secrets.token_bytes(params['BYTES_MU'])], dtype=uint8))
-    copyto(mu, array([54, 97, 58, 117, 209, 149, 232, 204, 121, 171, 37, 137, 113, 241, 36, 188], dtype=uint8))
+    copyto(mu,array([randbyte for randbyte in secrets.token_bytes(params['BYTES_MU'])], dtype=uint8))
+    # trcl("randomness", mu)
+    # copyto(mu, array([51, 52, 165, 154, 205, 235, 13, 74, 157, 63, 137, 59, 155, 71, 221, 83], dtype=uint8))
+    # copyto(mu, array([54, 97, 58, 117, 209, 149, 232, 204, 121, 171, 37, 137, 113, 241, 36, 188], dtype=uint8))
     shake(G2out, params['CRYPTO_BYTES']+params['CRYPTO_BYTES'], G2in, params['BYTES_PKHASH']+params['BYTES_MU'])
 
     # Generate Sp and Ep, and compute Bp = Sp*A + Ep. Generate A on-the-fly
@@ -204,9 +190,7 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     ct_c2 = ct[(params['PARAMS_LOGQ'] * params['PARAMS_N'] * params['PARAMS_NBAR']) // 8:]
     sk_s  = sk
     sk_pk = sk[params['CRYPTO_BYTES']:]
-    # TODO: IS THAT OKAY?
     sk_S  = sk[params['CRYPTO_BYTES'] + params['CRYPTO_PUBLICKEYBYTES']:] ; sk_S.dtype = uint16
-    # TODO: EMPTY NOT ZEROS HERE
     S = empty(params['PARAMS_N'] * params['PARAMS_NBAR'], dtype=uint16)
     sk_pkh = sk[params['CRYPTO_BYTES'] + params['CRYPTO_PUBLICKEYBYTES'] + 2 * params['PARAMS_N'] * params['PARAMS_NBAR']:]
     pk_seedA = sk_pk
@@ -218,7 +202,7 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     G2out   = empty(2 * params['CRYPTO_BYTES'], dtype=uint8) # contains secret data
     seedSEprime = G2out # contains secret data
     kprime = G2out[params['CRYPTO_BYTES']:] # contains secret data
-    Fin    = empty(params['CRYPTO_CIPHERTEXTBYTES'] + params['CRYPTO_BYTES']) # contains secret data via Fin_k
+    Fin    = empty(params['CRYPTO_CIPHERTEXTBYTES'] + params['CRYPTO_BYTES'], dtype=uint8) # contains secret data via Fin_k
     Fin_ct = Fin
     Fin_k  = Fin[params['CRYPTO_CIPHERTEXTBYTES']:] # contains secret data
     shake_input_seedSEprime = empty(1 + params['CRYPTO_BYTES'], dtype=uint8) # contains secret data
@@ -251,8 +235,13 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     frodo_sample_n(Sp, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
     frodo_sample_n(Ep, params['PARAMS_N'] * params['PARAMS_NBAR'], **params)
 
-    # TODO: changed important line here!
-    frodo_mul_add_as_plus_e(BBp, Sp, Ep, pk_seedA, **params)
+    # TODO: Problem in this function = all params passing there are OK, BBp after function is not
+    # TYPES OF PARAMS - OK
+    frodo_mul_add_sa_plus_e(BBp, Sp, Ep, pk_seedA, **params)
+
+    # trc("tab: ", len(BBp))
+    # trcl("tab", BBp)
+    # exit()
 
     # Generate Epp and compute W = Sp*B + Epp
     frodo_sample_n(Ep, params['PARAMS_NBAR'] ** 2, **params)
@@ -272,9 +261,10 @@ def crypto_kem_dec(ss, ct, sk, shake, **params):
     BBp[:params['PARAMS_N']*params['PARAMS_NBAR']] =\
         BBp[:params['PARAMS_N']*params['PARAMS_NBAR']] & ((1 << params['PARAMS_LOGQ']) - 1)
 
+    # TODO: Problem is: Bp is not equal to the BBp in this range => why?
     # Is (Bp == BBp & C == CC) == true
     if Bp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']].all() == BBp[:2 * params['PARAMS_N'] * params['PARAMS_NBAR']].all() and\
-        C[:2 * params['PARAMS_N'] ** 2].all() == CC[:2 * params['PARAMS_N'] ** 2].all():
+        C[:2 * params['PARAMS_NBAR'] ** 2].all() == CC[:2 * params['PARAMS_NBAR'] ** 2].all():
         # Load k' to do ss = F(ct || k')
         Fin_k[:params['CRYPTO_BYTES']] = kprime[:params['CRYPTO_BYTES']]
     else:

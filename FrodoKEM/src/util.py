@@ -1,15 +1,10 @@
-from numpy import zeros, uint16, frombuffer, uint32, uint8, array, sum, tile, split
-import trace
+from numpy import uint16, uint8
 
 """
 * FrodoKEM: Learning with Errors Key Encapsulation
 *
 * Abstract: additional functions for FrodoKEM
 """
-
-trace.debug_mode = True
-trcl = trace.tracelst
-trc = trace.trace
 
 
 def frodo_pack(out, outlen, invec, inlen, lsb):
