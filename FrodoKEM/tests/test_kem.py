@@ -1,6 +1,6 @@
 from sys import argv
 
-from numpy import uint8, zeros, array#, empty
+from numpy import uint8, zeros, array, array_equal#, empty
 from MISC import bigfile, trace
 empty = zeros
 
@@ -42,17 +42,6 @@ if len(argv) == 1 or argv[1] == "FrodoKEM-640":
 # if argv[1] == "FrodoKEM-1344":
 #     from api_frodo1344 import *
 
-
-class KEMValues():
-    def __init__(self):
-        self.pk = zeros(FrodoKEM640Params['CRYPTO_PUBLICKEYBYTES'], dtype=uint8)
-        self.sk = zeros(FrodoKEM640Params['CRYPTO_SECRETKEYBYTES'], dtype=uint8)
-        self.ss_encap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
-        self.ss_decap = empty(FrodoKEM640Params['CRYPTO_BYTES'], dtype=uint8)
-        self.ct = empty(FrodoKEM640Params['CRYPTO_CIPHERTEXTBYTES'], dtype=uint8)
-    #
-#
-
 #global params
 
 
@@ -68,7 +57,7 @@ def kem_test(named_parameters, iterations):
     # paramsTest = KEMValues()
     # crypto_kem_keypair(paramsTest.pk, paramsTest.sk)
 
-    for x in range(100): #range(iterations):
+    for x in range(200): #range(iterations):
         params = KEMValues()
         # params.pk = paramsTest.pk.copy()
         # params.sk = paramsTest.sk.copy()
@@ -93,21 +82,21 @@ def kem_test(named_parameters, iterations):
         # crypto_kem_enc(params.ct, params.ss_encap, params.pk)
         # crypto_kem_dec(params.ss_decap, params.ct, params.sk)
 
-        trc("ss", params.ss_encap == params.ss_decap)
-        trcl("ss_encap", params.ss_encap)
-        trcl("ss_encap", params.ss_decap)
-        trc("-" * 30)
+        # trc("ss", params.ss_encap == params.ss_decap)
+        # trcl("ss_encap", params.ss_encap)
+        # trcl("ss_encap", params.ss_decap)
+        # trc("-" * 30)
 
         # crypto_kem_dec(params.ss_decap, params.ct, params.sk)
         # trcl("ss_encap: ",params.ss_encap)
         # trcl("ss_decap: ", params.ss_decap)
         # trc("\n\n")
 
-        # if array_equal(params.ss_encap,params.ss_decap) is not True:
-        #     print("ERROR!")
-        #     # return False
-        # else:
-        #     print("Keys equal.")
+        if array_equal(params.ss_encap,params.ss_decap) is not True:
+            print("ERROR!")
+            # return False
+        else:
+            print("Keys equal.")
 
     # print("Tests PASSED. All sessions keys matched.\n")
     return True

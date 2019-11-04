@@ -22,7 +22,7 @@ trc = trace.trace
 """
 
 # TODO: Compile it with optimalization for AVX for python - with
-#  Virtual Env and so. There was an article about it, makes code 20x faster
+#  cdVirtual Env and so. There was an article about it, makes code 20x faster
 
 
 def frodo_mul_add_as_plus_e(out, s, e, seed_A, **params):
