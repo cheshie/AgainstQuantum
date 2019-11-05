@@ -46,7 +46,7 @@ KeccakF_RoundConstants = array(
 )
 
 
-def shake128(output, outlen, input_a, inlen):
+def shake128(self, output, outlen, input_a, inlen):
     output_ref = output
 
     s = zeros(25, dtype=uint64)

@@ -32,3 +32,6 @@ HYLA:
 * start new algorithm, or rather leave it for later or never?
 * start making gui app for it or leave it as it is?
 * include in my dissertation analysis of the entire library with these algorithms
+
+# TODO: Compile it with optimalization for AVX for python - with
+#  cdVirtual Env and so. There was an article about it, makes code 20x faster
