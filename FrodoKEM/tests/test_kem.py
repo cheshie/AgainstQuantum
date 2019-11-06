@@ -1,6 +1,7 @@
 from sys import argv
-from timeit import timeit
-from numpy import zeros, array_equal
+from timeit import Timer
+from numpy import array_equal
+from statistics import mean, stdev
 from MISC import trace
 
 trace.debug_mode = True
@@ -9,7 +10,8 @@ trc = trace.trace
 
 # Test parameters
 KEM_TEST_ITERATIONS = 2
-KEM_BENCH_SECONDS   =  1
+KEM_BENCH_SECONDS   = 1
+REPETITIONS         = 2
 
 # Print message if more than one arg is specified
 if len(argv) > 2:
@@ -43,8 +45,8 @@ if len(argv) == 1 or argv[1] == "FrodoKEM-640":
 
 def kem_test(named_parameters, iterations):
     print("=" * 125, "\n");
-    print("Testing correctness of key encapsulation mechanism (KEM), system %s, tests for %d iterations\n" %
-          (named_parameters, iterations))
+    print(f"Testing correctness of key encapsulation mechanism (KEM), system {named_parameters},"
+          f" tests for {iterations} iterations\n")
     print("=" * 125, "\n");
 
     for x in range(iterations):
@@ -64,16 +66,19 @@ def kem_test(named_parameters, iterations):
 
 
 def kem_bench(seconds):
-    # What are iterations in the original???
-    print("Key generation: ",timeit(lambda: crypto_kem_keypair(),'gc.enable()',number=KEM_TEST_ITERATIONS))
-    print("KEM encapsulation: ", timeit(lambda: crypto_kem_enc(),'gc.enable()',number=KEM_TEST_ITERATIONS)) #'crypto_kem_enc(ct, ss_encap, pk)', globals=globals()
-    print("KEM decapsulation: ", timeit(lambda: crypto_kem_dec(),'gc.enable()',number=KEM_TEST_ITERATIONS)) #'crypto_kem_dec(ss_decap, ct, sk)', globals=globals()
+    print(20 * " ", "{:<10s} {:<10s} {:<10s} {:<10s}".format("Total", "Average", "Best", "Std.dev"))
+    temp = Timer(lambda: crypto_kem_keypair(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
+    print("   Key generation: {:2.3f} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
+    temp = Timer(lambda: crypto_kem_enc(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
+    print("KEM encapsulation: {} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
+    temp = Timer(lambda: crypto_kem_dec(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
+    print("KEM decapsulation: {} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
 #
 
 
 def main():
     OK = True
-    OK = kem_test(FrodoAPI640.CRYPTO_ALGNAME, KEM_TEST_ITERATIONS)
+    # OK = kem_test(FrodoAPI640.CRYPTO_ALGNAME, KEM_TEST_ITERATIONS)
 
     if OK is True:
         kem_bench(KEM_BENCH_SECONDS)
