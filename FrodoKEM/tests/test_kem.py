@@ -66,13 +66,16 @@ def kem_test(named_parameters, iterations):
 
 
 def kem_bench(seconds):
-    print(20 * " ", "{:<10s} {:<10s} {:<10s} {:<10s}".format("Total", "Average", "Best", "Std.dev"))
-    temp = Timer(lambda: crypto_kem_keypair(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
-    print("   Key generation: {:2.3f} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
-    temp = Timer(lambda: crypto_kem_enc(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
-    print("KEM encapsulation: {} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
-    temp = Timer(lambda: crypto_kem_dec(),'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
-    print("KEM decapsulation: {} {} {}".format(sum(temp),mean(temp),min(temp),stdev(temp)))
+    print("{:<20s} {:<20s} {:<20s} {:<20s} {:<20s}".format("Operation", "Total time (s)", "Average (s)", "Best (s)",
+                                                           "Std.dev (s)"))
+
+    titles = ["   Key generation: ", "KEM encapsulation: ", "KEM decapsulation: "]
+    functions = [crypto_kem_keypair, crypto_kem_enc, crypto_kem_dec]
+
+    for fun,tl in zip(functions,titles):
+        res = Timer(lambda: fun(), 'gc.enable()').repeat(repeat=KEM_TEST_ITERATIONS, number=REPETITIONS)
+        print(tl+5*" "+"{:<20s} {:<20s} {:<20s} {:<20s}".format(str(round(sum(res), 3)), str(round(mean(res),3)),
+                                                          str(round(min(res),3)), str(round(stdev(res),3))))
 #
 
 
