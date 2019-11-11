@@ -185,8 +185,8 @@ class Frodo():
         pr_nb  = pm.PARAMS_NBAR
         pr_lq  = pm.PARAMS_LOGQ
 
-        # Calculate how many elements from s take, knowing that it should have size 40960
-        # which is 5120 * 8 => meaning to be able to divide it into proper sub-vectors
+        # Calculate how many elements from s take, knowing that it should have size
+        # r_n * pr_nb => meaning to be able to divide it into proper sub-vectors
         s_range = (pr_n * pr_nb * (pr_nb)) // pr_nb
 
         # Take range of elements from e vector

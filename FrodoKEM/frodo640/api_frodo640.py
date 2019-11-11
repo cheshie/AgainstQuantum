@@ -1,6 +1,6 @@
 from numpy import array, zeros, uint8, uint16
 from src.kem import CryptoKem
-from src.sha3.shafips202 import shake128
+from src.sha3.shafips202 import SHA202
 
 empty = zeros
 
@@ -39,7 +39,7 @@ class FrodoAPI640(CryptoKem):
             [4643, 13363, 20579, 25843, 29227, 31145, 32103, 32525, 32689, 32745, 32762, 32766, 32767], dtype=uint16)
 
         # Selecting SHAKE XOF function for the KEM and noise sampling
-        shake = shake128
+        shake = SHA202.shake128
     #
 
     Params = Params()

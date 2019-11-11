@@ -35,3 +35,32 @@ HYLA:
 
 # TODO: Compile it with optimalization for AVX for python - with
 #  cdVirtual Env and so. There was an article about it, makes code 20x faster
+
+From paper https://frodokem.org/files/FrodoKEM-specification-20190330.pdf => look at it
+# Maybe you need to implement SHAKE-256 from shafips file?
+
+Concretely,FrodoKEMis designed for IND-CCA security at three levels:
+•FrodoKEM-640,  which  targets  Level  1  in  the  NIST  call  for  proposals  (matching  or  exceeding
+  thebrute-force security of AES-128), and
+
+•FrodoKEM-976,  which  targets  Level  3  in  the  NIST  call  for  proposals  (matching  or  exceeding
+ thebrute-force security of AES-192).
+
+•FrodoKEM-1344,  which  targets  Level  5  in  the  NIST  call  for  proposals  (matching  or  exceeding
+  thebrute-force security of AES-256).
+
+
+  Two variants of each of the above schemes are provided:
+
+  •FrodoKEM-640-AES,FrodoKEM-976-AES, andFrodoKEM-1344-AES, which useAES128 to pseudoran-domly generate a large
+  public matrix (calledA).
+
+  •FrodoKEM-640-SHAKE,FrodoKEM-976-SHAKE,  and FrodoKEM-1344-SHAKE,  which use SHAKE128 to pseudorandomly generate
+   the matrix.
+
+The AES variants are particularly suitable for devices having AES hardware acceleration
+(such as AES-NIon  Intel  platforms),  while  theSHAKEvariants  generally  provide  competitive  or
+better  performance  incomparison with the AES variants in the absence of hardware acceleration.
+In the remainder of this section, we outlineFrodoKEM’s scientific lineage, briefly explain our design
+choices(with further details appearing in subsequent sections), and describe other features of our proposal
+beyondthose explicitly requested by NIST.

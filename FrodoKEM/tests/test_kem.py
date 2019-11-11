@@ -80,8 +80,7 @@ def kem_bench(seconds):
 
 
 def main():
-    OK = True
-    # OK = kem_test(FrodoAPI640.CRYPTO_ALGNAME, KEM_TEST_ITERATIONS)
+    OK = kem_test(FrodoAPI640.CRYPTO_ALGNAME, KEM_TEST_ITERATIONS)
 
     if OK is True:
         kem_bench(KEM_BENCH_SECONDS)
