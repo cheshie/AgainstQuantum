@@ -56,8 +56,30 @@ class SHA202:
         SHA202.keccak_squeezeblocks(output, nblocks, s, SHAKE128_RATE)
 
         output_ref = output_ref[nblocks*SHAKE128_RATE:]
-
         outlen -= nblocks*SHAKE128_RATE
+
+        if outlen:
+            SHA202.keccak_squeezeblocks(t, 1, s, SHAKE128_RATE)
+            for i in range(outlen):
+                output_ref[i] = t[i]
+    #
+
+    @staticmethod
+    def shake256(self, output, outlen, input_a, inlen):
+        output_ref = output
+
+        s = zeros(25, dtype=uint64)
+        t = zeros(SHAKE256_RATE, dtype=uint8)
+        nblocks = outlen // SHAKE256_RATE
+
+        # Absorb input_a
+        SHA202.keccak_absorb(s, SHAKE256_RATE, input_a, inlen, 0x1F)
+
+        # Squeeze output
+        SHA202.keccak_squeezeblocks(output, nblocks, s, SHAKE256_RATE)
+
+        output_ref = output_ref[nblocks * SHAKE256_RATE:]
+        outlen -= nblocks * SHAKE256_RATE
 
         if outlen:
             SHA202.keccak_squeezeblocks(t, 1, s, SHAKE128_RATE)
