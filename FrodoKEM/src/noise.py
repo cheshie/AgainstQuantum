@@ -1,10 +1,5 @@
 from numpy import uint16, repeat, tile, split, sum
 
-from MISC import trace
-
-trace.debug_mode = True
-trcl = trace.tracelst
-trc = trace.trace
 """
 * FrodoKEM: Learning with Errors Key Encapsulation
 *

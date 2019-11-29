@@ -2,11 +2,6 @@ from sys import argv
 from timeit import Timer
 from numpy import array_equal
 from statistics import mean, stdev
-from MISC import trace
-
-trace.debug_mode = True
-trcl = trace.tracelst
-trc = trace.trace
 
 # Test parameters
 KEM_TEST_ITERATIONS = 2

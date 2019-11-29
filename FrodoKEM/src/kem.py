@@ -9,7 +9,8 @@ empty = zeros
 
 class CryptoKem(Frodo):
     @staticmethod
-    def keypair(pm, pk, sk):
+    def keypair(pm: 'Referencing params of specific FrodoKEM version', pk: 'public key',
+                sk: 'secret key') -> (array, array):
         # Generate the secret values, the seed for S and E, and
         #the seed for the seed for A.Add seed_A to the public key
         pk_seedA = pk
@@ -73,7 +74,8 @@ class CryptoKem(Frodo):
     #
 
     @staticmethod
-    def enc(pm, ct, ss, pk):
+    def enc(pm: 'Referencing params of specific FrodoKEM version', ct: 'ciphertext', ss: 'shared secret',
+            pk: 'public key') -> array:
         # FrodoKEM's key encapsulation
         pk_seedA = pk
         pk_b     = pk[pm.BYTES_SEED_A:]
@@ -157,7 +159,8 @@ class CryptoKem(Frodo):
     #
 
     @staticmethod
-    def dec(pm, ss, ct, sk):
+    def dec(pm: 'Referencing params of specific FrodoKEM version', ss: 'shared secret', ct: 'ciphertext',
+            sk: 'public key') -> array:
         # FrodoKEM's key decapsulation
         B  = zeros(pm.PARAMS_N * pm.PARAMS_NBAR, dtype=uint16)
         Bp = zeros(pm.PARAMS_N * pm.PARAMS_NBAR, dtype=uint16)
