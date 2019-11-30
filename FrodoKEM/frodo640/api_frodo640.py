@@ -8,8 +8,7 @@ empty = zeros
 ********************************************************************************************
 * FrodoKEM: Learning with Errors Key Encapsulation
 *
-* Abstract: parameters and API for FrodoKEM-640
-functions for FrodoKEM-640
+* Abstract: parameters and API for FrodoKEM-640 functions for FrodoKEM-640
 *           Instantiates "frodo_macrify.c" with the necessary matrix arithmetic functions
 *********************************************************************************************/
 """
