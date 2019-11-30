@@ -1,63 +1,89 @@
 import socket
 import threading
+import curses
+from time import sleep
 
 
 class ConnectionManager:
-    def __init__(self, bind_ip="0.0.0.0", bind_port=9999, socket_type=socket.SOCK_STREAM):
-        self.bind_ip   = bind_ip
-        self.bind_port = bind_port
-        self.socket    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, ip="0.0.0.0", port=9999, socket_type=socket.SOCK_STREAM):
         self.client_handler = None
+        self.socket = socket.socket(socket.AF_INET, socket_type)
+        self.ip   = ip
+        self.port = port
+
+        self.me_name  = "ME"
+        self.you_name = "YOU"
+        self.prompt   = "?>"
+        self.server_conns = []
+
+        self.read_handler = None
+        self.write_handler = None
     #
 
     def start_server(self, backlog_conns=5, type_conns=socket.SOCK_STREAM):
-        def handle_client(client_socket):
-            # this is client-handling function thread
-            request = client_socket.recv(1024)
-
-            print("[*] Received: %s" % request.decode())
-
-            # send back a packet
-            client_socket.send(b"ACK!")
-            client_socket.close()
-        #
-
         # Start the server on specific IP and port listening on
-        self.socket.bind((self.bind_ip, self.bind_port))
+        self.socket.bind((self.ip, self.port))
 
         # Server start listening with a max backlog of connections set to 5
-        self.socketlisten(backlog_conns)
+        self.socket.listen(backlog_conns)
 
         # print trace
-        print("[*] Listening on %s:%d" % (self.bind_ip, self.bind_port))
+        # print("[INFO] Listening on %s:%d" % (self.ip, self.port))
 
+        # server loop - handling incoming connections
         while True:
-            # when a client connects, we receive the client socket
-            # into a client variable, and connection details into addr
             client, addr = self.socket.accept()
-
+            self.server_conns += client, addr
             print("[*] Accepted connection from: %s:%d" % (addr[0], addr[1]))
 
-            # spin up our client thread to handle incoming data
-            self.client_handler = threading.Thread(target=handle_client, args=(client,))
+            # Handle reading responses and answering
+            self.read_handler = threading.Thread(target=self.read_response, args=(client,))
+            self.write_handler = threading.Thread(target=self.write_response, args=(client,))
 
-            # start the thread
-            self.client_handler.start()
+            self.read_handler.start(); self.write_handler.start()
     #
 
     def start_client(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.ip, self.port))
 
-        # connect the client
-        self.socket.connect((self.bind_ip, self.bind_port))
+        # Should validate connection! somehow!
+        print("[*] Started connection with: ", self.ip + ":" + self.port)
 
-        # send some data
-        self.socket.send(b"How are you?")
-        # client.sendto(b"AAABBBCCC", (target, tport))
-
-        # receive response
+        # Handle reading responses and answering
+        self.read_handler = threading.Thread(target=self.read_response, args=(self.socket,))
+        self.write_handler = threading.Thread(target=self.write_response, args=(self.socket,))
+        self.read_handler.start(); self.write_handler.start()
         # response = client.recv(4096)
-        response, addr = self.socket.recvfrom(4096)
 
-        print(response)
+        try:
+            while True:
+                sleep(0.1)
+        except KeyboardInterrupt:
+            print("[!] Connection ended. ")
+            self.socket.close()
+    #
+
+    def send_message(self, message=None, recipient=None):
+        # Prompt user for message
+        if message is None:
+            message = input(self.me_name + " " + self.prompt + " ")
+
+        if recipient is None:
+            recipient = self.socket
+
+        recipient.send(str.encode(message))
+    #
+
+    def receive_message(self, client=None, size_bytes=1024):
+        if client is None:
+            client = self.socket
+
+        request = client.recv(size_bytes)
+        print("\n" + self.you_name + " " + self.prompt + " " + request.decode())
+
+    def write_response(self, cl_soc):
+        while True: self.send_message(recipient=cl_soc)
+
+    def read_response(self, cl_soc):
+        while True: self.receive_message(cl_soc)
 #
