@@ -1,9 +1,9 @@
 from numpy import array, zeros, uint8, uint16, frombuffer, copyto
 import secrets
-from src.config import LE_TO_UINT16, UINT16_TO_LE
-from src.frodo_macrify import Frodo
-from src.noise import frodo_sample_n
-from src.util import frodo_pack, frodo_unpack
+from FrodoKEM.src.config import LE_TO_UINT16, UINT16_TO_LE
+from FrodoKEM.src.frodo_macrify import Frodo
+from FrodoKEM.src.noise import frodo_sample_n
+from FrodoKEM.src.util import frodo_pack, frodo_unpack
 empty = zeros
 
 

@@ -4,7 +4,7 @@ from Crypto.Cipher import AES
 from math import ceil
 from numpy import zeros, uint16, frombuffer, uint8, uint64, array, sum, tile, \
     split, copyto, transpose, bitwise_and, array_split, hstack, repeat
-from src.config import UINT16_TO_LE, LE_TO_UINT16
+from FrodoKEM.src.config import UINT16_TO_LE, LE_TO_UINT16
 
 """
 * FrodoKEM: Learning with Errors Key Encapsulation

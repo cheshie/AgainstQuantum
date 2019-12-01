@@ -25,7 +25,7 @@ if len(argv) == 2:
 # As each of three has different set of parameters
 # Default option is FrodoKEM-640 - even if no args were supplied
 if len(argv) == 1 or argv[1] == "FrodoKEM-640":
-    from frodo640.api_frodo640 import FrodoAPI640
+    from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640
     # Assign functions according to algorithm specified
     FrodoAPI640 = FrodoAPI640()
     crypto_kem_keypair = FrodoAPI640.crypto_kem_keypair_frodo640

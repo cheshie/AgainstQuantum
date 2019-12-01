@@ -48,6 +48,7 @@ class ConnectionManager:
 
         # Should validate connection! somehow!
         print("[*] Started connection with: ", self.ip + ":" + self.port)
+        print("[*] Press [CTRL + C] to exit.")
 
         # Handle reading responses and answering
         self.read_handler = threading.Thread(target=self.read_response, args=(self.socket,))
@@ -59,7 +60,7 @@ class ConnectionManager:
             while True:
                 sleep(0.1)
         except KeyboardInterrupt:
-            print("[!] Connection ended. ")
+            print("[!] Connection ended.")
             self.socket.close()
     #
 
@@ -80,10 +81,13 @@ class ConnectionManager:
 
         request = client.recv(size_bytes)
         print("\n" + self.you_name + " " + self.prompt + " " + request.decode())
+    #
 
     def write_response(self, cl_soc):
         while True: self.send_message(recipient=cl_soc)
+    #
 
     def read_response(self, cl_soc):
         while True: self.receive_message(cl_soc)
+    #
 #

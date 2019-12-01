@@ -1,6 +1,6 @@
 from numpy import array, zeros, uint8, uint16
-from src.kem import CryptoKem
-from src.sha3.shafips202 import SHA202
+from FrodoKEM.src.kem import CryptoKem
+from FrodoKEM.src.sha3.shafips202 import SHA202
 
 empty = zeros
 
