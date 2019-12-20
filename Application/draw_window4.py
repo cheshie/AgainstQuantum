@@ -4,7 +4,7 @@ import string
 from time import sleep
 #from typing import Dict, Tuple, #TypedDict
 # TODO: if window is too small, it crashes
-# tODO: implement thread with a stack that receives messages and prints them
+# TODO: implement thread with a stack that receives messages and prints them
 # TODO: cursos movement => back and forth and up to move around edited message
 
 # Heres the thing

@@ -91,3 +91,25 @@ class ConnectionManager:
         while True: self.receive_message(cl_soc)
     #
 #
+
+def rpc_add(a, b):
+    return a + b
+#
+
+def rpc_sub(a, b):
+    return a - b
+#
+
+rpc_functions = {
+    'add' :
+        {
+            'argc' : 2,
+            'argv' : [int, int]
+        },
+
+    'sub' :
+        {
+            'argc' : 2,
+            'argv' : [int, int]
+        }
+}
