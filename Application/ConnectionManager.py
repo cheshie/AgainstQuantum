@@ -4,6 +4,7 @@ import curses
 from time import sleep
 import struct
 import json
+# from ChatManager import ChatManager
 
 
 class ConnectionManager:
@@ -24,6 +25,8 @@ class ConnectionManager:
     #
 
     def start_server(self, backlog_conns=5, type_conns=socket.SOCK_STREAM):
+        # self.chat = ChatManager('server')
+
         # Start the server on specific IP and port listening on
         self.socket.bind((self.ip, self.port))
 
@@ -31,14 +34,14 @@ class ConnectionManager:
         self.socket.listen(backlog_conns)
 
         # print trace
-        print("[INFO] Listening on %s:%d" % (self.ip, self.port))
+        # print("[INFO] Listening on %s:%d" % (self.ip, self.port))
 
         # server loop - handling incoming connections
         while True:
             client, addr = self.socket.accept()
             self.server_conns += client, addr
 
-            print("[*] Accepted connection from: %s:%d" % (addr[0], addr[1]))
+            # print("[*] Accepted connection from: %s:%d" % (addr[0], addr[1]))
 
             # Get length of structure containing function information
             # Up to 4 bytes - could be shorter
@@ -59,7 +62,7 @@ class ConnectionManager:
                 continue
 
             loaded_data = json.loads(data)
-            print(loaded_data)
+            # print(loaded_data)
 
             # Interpret sent structure into function
             remote_name = loaded_data['func']
@@ -77,13 +80,13 @@ class ConnectionManager:
             # Check arguments passed for the function
             for arg_type, remote_arg in zip(func['argv'], remote_args):
                 if type(remote_arg) is not arg_type:
-                    print("Incorrect argument type: ",arg_type, type(remote_arg))
+                    # print("Incorrect argument type: ",arg_type, type(remote_arg))
                     client.close()
                     continue
 
-            print("Calling ", remote_name, remote_args)
+            # print("Calling ", remote_name, remote_args)
             ret = func['f'](*remote_args)
-            print("Returned: ", ret)
+            # print("Returned: ", ret)
             ret = json.dumps(ret)
 
             # Send the response back
@@ -99,13 +102,15 @@ class ConnectionManager:
     #
 
     def start_client(self):
+        # self.chat = ChatManager('client')
+
         # self.socket.connect((self.ip, self.port))
 
         print("adding: ",self.remote.add(2,2))
 
         # Should validate connection! somehow!
-        print("[*] Started connection with: ", self.ip + ":" + str(self.port))
-        print("[*] Press [CTRL + C] to exit.")
+        # print("[*] Started connection with: ", self.ip + ":" + str(self.port))
+        # print("[*] Press [CTRL + C] to exit.")
 
         # Handle reading responses and answering
         # self.read_handler = threading.Thread(target=self.read_response, args=(self.socket,))

@@ -17,7 +17,7 @@ from time import sleep
 
 
 class ChatManager:
-    def __init__(self):
+    def __init__(self, mode):
         self.stdscr = curses.initscr()
         self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
         self.prompt = lambda n: '#'+ str(n) + " > "
@@ -29,8 +29,9 @@ class ChatManager:
         self.current_user_prompt = ""
         self.current_message = {"nick": self.nick, "msg": str()}#Dict[{"nick":self.nick, "msg":str()}]
         self.archive = ()
+        self.mode = mode
 
-        # Standard startup. Probably don't need to change this
+        # Standard setup. Probably don't need to change this
         # Clear and refresh the screen for a blank canvas
         curses.cbreak()
         curses.noecho()
@@ -75,14 +76,21 @@ class ChatManager:
             self.user_msg_box.refresh()
     #
 
-    def main_window(self):
+    def main_window(self, mode):
         self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
 
-        while True:
-            # Do sth with it. It looks horrible
-            self.get_user_message()
-            self.display_message_main()
-            self.all_msg_box.refresh()
+        if mode == 'client':
+            while True:
+                # Do sth with it. It looks horrible
+                self.get_user_message()
+                self.display_message_main()
+                self.all_msg_box.refresh()
+        elif mode == 'server':
+            while True:
+                self.display_message_main()
+                self.all_msg_box.refresh()
+        else:
+            print("Unsupported mode.")
     #
 
     def initialize_window(self, ht, wdh, ystart, xstart, is_user=False):
@@ -114,7 +122,7 @@ class ChatManager:
         else:
             self.all_msg_box.clear(); self.all_msg_box.box()
             self.publ_row_nr = 1
-        #
+    #
 
     def display_message_current(self):
         self.curr_msg_row_nr = 1
@@ -137,6 +145,10 @@ class ChatManager:
         else:
             self.user_msg_box.window.clear(); self.user_msg_box.window.box()
     #
+
+    def send_message(self, message):
+        self.archive += (message, )
+        self.all_msg_box.refresh()
 #
 
 
