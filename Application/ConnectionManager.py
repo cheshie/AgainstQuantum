@@ -4,7 +4,6 @@ import curses
 from time import sleep
 import struct
 import json
-# from ChatManager import ChatManager
 
 
 class ConnectionManager:
@@ -21,11 +20,12 @@ class ConnectionManager:
 
         self.read_handler  = None
         self.write_handler = None
-        self.remote    = self.remote_api(self.socket, self.ip, self.port)
+        self.remote    = self.RemoteAPI(self.socket, self.ip, self.port)
     #
 
-    def start_server(self, backlog_conns=5, type_conns=socket.SOCK_STREAM):
-        # self.chat = ChatManager('server')
+    def start_server(self, chatref, backlog_conns=5, type_conns=socket.SOCK_STREAM):
+        # self.chat_handler = threading.Thread(target=display_chat, args=('server',))
+        # self.chat_handler.start()
 
         # Start the server on specific IP and port listening on
         self.socket.bind((self.ip, self.port))
@@ -43,56 +43,15 @@ class ConnectionManager:
 
             # print("[*] Accepted connection from: %s:%d" % (addr[0], addr[1]))
 
-            # Get length of structure containing function information
-            # Up to 4 bytes - could be shorter
-            data = client.recv(4)
-
-            # Client did not send valid value
-            if not data:
-                client.close()
-                continue
-
-            # Get the structure from client
-            data_len = struct.unpack("<I", data)[0]
-            data = client.recv(data_len)
-
-            # Client did not send the strcutre
-            if not data:
-                client.close()
-                continue
-
-            loaded_data = json.loads(data)
-            # print(loaded_data)
-
-            # Interpret sent structure into function
-            remote_name = loaded_data['func']
-            remote_args = tuple(loaded_data['argv'])
-
-            # Determine if server supports this function
-            if remote_name not in self.remote.shared:
-                print("[!] Server does not support that function.")
-                client.close()
-                continue
-
-            # Get valid function from server
-            func = self.remote.shared[remote_name]
-
-            # Check arguments passed for the function
-            for arg_type, remote_arg in zip(func['argv'], remote_args):
-                if type(remote_arg) is not arg_type:
-                    # print("Incorrect argument type: ",arg_type, type(remote_arg))
-                    client.close()
-                    continue
-
-            # print("Calling ", remote_name, remote_args)
-            ret = func['f'](*remote_args)
-            # print("Returned: ", ret)
-            ret = json.dumps(ret)
+            message = self.handle_user_request(client)
+            message_decoded = json.loads(message)
+            chatref.display_message_main(message_decoded)
+            client.close()
 
             # Send the response back
-            client.sendall(struct.pack("<I", len(ret)))
-            client.sendall(ret.encode())
-            client.close()
+            # client.sendall(struct.pack("<I", len(message)))
+            # client.sendall(message.encode())
+            # client.close()
 
             # Handle reading responses and answering
             # self.read_handler = threading.Thread(target=self.read_response, args=(client,))
@@ -101,12 +60,12 @@ class ConnectionManager:
             # self.read_handler.start(); self.write_handler.start()
     #
 
-    def start_client(self):
+    def start_client(self, message):
         # self.chat = ChatManager('client')
 
         # self.socket.connect((self.ip, self.port))
 
-        print("adding: ",self.remote.add(2,2))
+        self.remote.send_message(message)
 
         # Should validate connection! somehow!
         # print("[*] Started connection with: ", self.ip + ":" + str(self.port))
@@ -123,6 +82,51 @@ class ConnectionManager:
         # except KeyboardInterrupt:
         #     print("[!] Connection ended.")
         #     self.socket.close()
+    #
+
+    def handle_user_request(self, client):
+        # Get length of structure containing function information
+        # Up to 4 bytes - could be shorter
+        data = client.recv(4)
+
+        # Client did not send valid value
+        if not data:
+            client.close()
+            return
+
+        # Get the structure from client
+        data_len = struct.unpack("<I", data)[0]
+        data = client.recv(data_len)
+
+        # Client did not send the strcutre
+        if not data:
+            client.close()
+            return
+
+        loaded_data = json.loads(data)
+        # print(loaded_data)
+
+        # Interpret sent structure into function
+        remote_name = loaded_data['func']
+        remote_args = tuple(loaded_data['argv'])
+
+        # Determine if server supports this function
+        if remote_name not in self.remote.shared:
+            print("[!] Server does not support that function.")
+            client.close()
+            return
+
+        # Get valid function from server
+        func = self.remote.shared[remote_name]
+
+        # Check arguments passed for the function
+        for arg_type, remote_arg in zip(func['argv'], remote_args):
+            if type(remote_arg) is not arg_type:
+                # print("Incorrect argument type: ",arg_type, type(remote_arg))
+                client.close()
+                return
+
+        return json.dumps(func['f'](*remote_args))
     #
 
     def send_message(self, message=None, recipient=None):
@@ -152,14 +156,13 @@ class ConnectionManager:
         while True: self.receive_message(cl_soc)
     #
 
-    class remote_api:
+    class RemoteAPI:
         def __init__(self, socket, ip, port):
             self.socket = socket
             self.ip = ip
             self.port = port
             self.shared = {
-            'add': { 'argv': [int, int], 'f': self.rpc_add},
-            'sub': { 'argv': [int, int], 'f': self.rpc_sub}}
+            'send_message': { 'argv': [dict], 'f': self.rpc_send_message}}
         #
 
         def connect(self):
@@ -202,12 +205,8 @@ class ConnectionManager:
             return worker
         #
 
-        def rpc_add(self, a, b):
-            return a + b
-        #
-
-        def rpc_sub(self, a, b):
-            return a - b
+        def rpc_send_message(self, message):
+            return message
         #
     #
 #

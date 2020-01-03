@@ -1,7 +1,9 @@
 import curses
 import random
 import string
+import threading
 from time import sleep
+from Application.ConnectionManager import ConnectionManager
 #from typing import Dict, Tuple, #TypedDict
 # TODO: if window is too small, it crashes
 # TODO: implement thread with a stack that receives messages and prints them
@@ -17,7 +19,7 @@ from time import sleep
 
 
 class ChatManager:
-    def __init__(self, mode):
+    def __init__(self):
         self.stdscr = curses.initscr()
         self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
         self.prompt = lambda n: '#'+ str(n) + " > "
@@ -29,7 +31,7 @@ class ChatManager:
         self.current_user_prompt = ""
         self.current_message = {"nick": self.nick, "msg": str()}#Dict[{"nick":self.nick, "msg":str()}]
         self.archive = ()
-        self.mode = mode
+        self.connection = ConnectionManager()
 
         # Standard setup. Probably don't need to change this
         # Clear and refresh the screen for a blank canvas
@@ -38,8 +40,6 @@ class ChatManager:
         self.stdscr.clear()
         self.stdscr.refresh()
         self.stdscr.keypad(1)
-
-        self.main_window()
     #
 
     def __del__(self):
@@ -57,8 +57,8 @@ class ChatManager:
             k = self.stdscr.getch()
 
             if k in [curses.KEY_ENTER, ord('\n'), 10, 13]:
-                self.archive += (self.current_message, )
-                return
+                # self.send_message(self.current_message)
+                return self.current_message
 
             if k in [curses.KEY_BACKSPACE]:
                 if len(self.current_message['msg']) > 1:
@@ -76,21 +76,22 @@ class ChatManager:
             self.user_msg_box.refresh()
     #
 
-    def main_window(self, mode):
+    def start_client(self):
         self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        while True:
+            # Do sth with it. It looks horrible
+            message = self.get_user_message()
+            self.connection.start_client(message)
+            self.display_message_main(message)
+    #
 
-        if mode == 'client':
-            while True:
-                # Do sth with it. It looks horrible
-                self.get_user_message()
-                self.display_message_main()
-                self.all_msg_box.refresh()
-        elif mode == 'server':
-            while True:
-                self.display_message_main()
-                self.all_msg_box.refresh()
-        else:
-            print("Unsupported mode.")
+    def start_server(self):
+        self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        self.connection.start_server(chatref=self)
+        # def receive_message(self):
+        # receiver = threading.Thread(target=receive_message, args=(self, ))
+        # while True:
+        # self.display_message_main()
     #
 
     def initialize_window(self, ht, wdh, ystart, xstart, is_user=False):
@@ -102,13 +103,13 @@ class ChatManager:
         return handle
     #
 
-    def display_message_main(self):
+    def display_message_main(self, message):
         winh, winw = self.all_msg_box.getmaxyx()
         winw = winw - len(self.prompt(self.nick)) - 2
         winh = winh - 2
-        message = self.archive[-1]
+        # message = self.archive[-1]
 
-        if self.publ_row_nr < winh:
+        if self.publ_row_nr <= winh:
             if len(message['msg']) > winw:
                 rows_msg = [message['msg'][i:i + winw] for i in range(0, len(message['msg']), winw)][-winh:]
                 self.all_msg_box.addstr(self.publ_row_nr, 1, self.prompt(message['nick']))
@@ -122,6 +123,8 @@ class ChatManager:
         else:
             self.all_msg_box.clear(); self.all_msg_box.box()
             self.publ_row_nr = 1
+
+        self.all_msg_box.refresh()
     #
 
     def display_message_current(self):
@@ -130,7 +133,7 @@ class ChatManager:
         winw = winw - len(self.prompt(self.nick)) - 2
         winh = winh - 2
 
-        if self.curr_msg_row_nr < winh:
+        if self.curr_msg_row_nr <= winh:
             if len(self.current_message['msg']) > winw:
                 self.user_msg_box.clear(); self.user_msg_box.box()
                 rows_msg = [self.current_message['msg'][i:i + winw] for i in range(0, len(self.current_message['msg']), winw)][-winh:]
@@ -148,10 +151,10 @@ class ChatManager:
 
     def send_message(self, message):
         self.archive += (message, )
-        self.all_msg_box.refresh()
+        # self.all_msg_box.refresh()
+    #
 #
 
 
 if __name__ == "__main__":
     ChatManager()
-#
