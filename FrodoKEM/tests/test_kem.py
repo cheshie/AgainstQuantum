@@ -92,7 +92,7 @@ def kem_test(named_parameters, iterations=5, system='Frodo640'):
     test_thread.start()
     time_started = datetime.now()
 
-    while test_thread.isAlive():
+    while test_thread.is_alive():
         _ = os.system("clear")
         print_title_table()
         print_stats()

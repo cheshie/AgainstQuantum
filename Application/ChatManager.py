@@ -1,4 +1,5 @@
 import curses
+import json
 import random
 import string
 import threading
@@ -17,39 +18,53 @@ from Application.ConnectionManager import ConnectionManager
         # if usr_prompt is not self.current_user_prompt and usr_prompt is not None:
         # window.addstr(row_nr, 1, usr_prompt)
 
+# def send_message(self, message):
+#     self.archive += (message, )
+#     # self.all_msg_box.refresh()
+# #
+
 
 class ChatManager:
-    def __init__(self):
-        self.stdscr = curses.initscr()
+    def __init__(self, mode='text'):
         self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
         self.prompt = lambda n: '#'+ str(n) + " > "
         self.curr_msg_row_nr = 1
         self.publ_row_nr     = 1
-        self.height, self.width = self.stdscr.getmaxyx()
         self.user_msg_box = None
         self.all_msg_box  = None
         self.current_user_prompt = ""
         self.current_message = {"nick": self.nick, "msg": str()}#Dict[{"nick":self.nick, "msg":str()}]
         self.archive = ()
-        self.connection = ConnectionManager()
+        self.mode = mode
+        self.connection = ConnectionManager(mode=self.mode)
+        self.message_received = False
 
         # Standard setup. Probably don't need to change this
         # Clear and refresh the screen for a blank canvas
-        curses.cbreak()
-        curses.noecho()
-        self.stdscr.clear()
-        self.stdscr.refresh()
-        self.stdscr.keypad(1)
+        if self.mode == 'visual':
+            self.stdscr = curses.initscr()
+            self.height, self.width = self.stdscr.getmaxyx()
+            curses.cbreak()
+            curses.noecho()
+            self.stdscr.clear()
+            self.stdscr.refresh()
+            self.stdscr.keypad(1)
     #
 
     def __del__(self):
-        self.stdscr.keypad(0)
-        curses.nocbreak()
-        curses.echo()
-        curses.endwin()
+        if self.mode == 'visual':
+            self.stdscr.keypad(0)
+            curses.nocbreak()
+            curses.echo()
+            curses.endwin()
     #
 
     def get_user_message(self):
+        if self.mode == 'text':
+            # Wait for other threads synchronization
+            sleep(0.5)
+            return {"nick": self.nick, "msg": input('\n' + self.prompt(self.nick))}
+
         self.user_msg_box = self.initialize_window(self.height // 7, self.width, self.height - self.height // 7, 0, True)
         self.current_message['msg'] = str()
 
@@ -77,21 +92,22 @@ class ChatManager:
     #
 
     def start_client(self):
-        self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        if self.mode == 'visual':
+            self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        self.connection.start_client(self)
+
         while True:
-            # Do sth with it. It looks horrible
             message = self.get_user_message()
-            self.connection.start_client(message)
-            self.display_message_main(message)
+            self.connection.send_message(message)
+            if self.mode == 'visual':
+                self.display_message_main(message)
     #
 
     def start_server(self):
-        self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        if self.mode =='visual':
+            self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+
         self.connection.start_server(chatref=self)
-        # def receive_message(self):
-        # receiver = threading.Thread(target=receive_message, args=(self, ))
-        # while True:
-        # self.display_message_main()
     #
 
     def initialize_window(self, ht, wdh, ystart, xstart, is_user=False):
@@ -103,7 +119,18 @@ class ChatManager:
         return handle
     #
 
-    def display_message_main(self, message):
+    def display_message_main(self, message, reset=False):
+        if self.mode == 'text':
+            # If new message from server arrived, reset prompt for the local user
+            if reset == True:
+                ending = '\n' + self.prompt(self.nick)
+            else:
+                ending = str()
+
+            # Display message and optionally prompt (True)
+            print('\n' + self.prompt(message['nick']) + message['msg'] + ending, end="")
+            return
+
         winh, winw = self.all_msg_box.getmaxyx()
         winw = winw - len(self.prompt(self.nick)) - 2
         winh = winh - 2
@@ -147,11 +174,6 @@ class ChatManager:
                 self.user_msg_box.addstr(self.curr_msg_row_nr, len(self.prompt(self.current_message['nick'])) + 1, self.current_message['msg'])
         else:
             self.user_msg_box.window.clear(); self.user_msg_box.window.box()
-    #
-
-    def send_message(self, message):
-        self.archive += (message, )
-        # self.all_msg_box.refresh()
     #
 #
 
