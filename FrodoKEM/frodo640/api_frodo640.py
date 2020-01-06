@@ -2,8 +2,6 @@ from numpy import array, zeros, uint8, uint16
 from FrodoKEM.src.kem import CryptoKem
 from FrodoKEM.src.sha3.shafips202 import SHA202
 
-empty = zeros
-
 """
 ********************************************************************************************
 * FrodoKEM: Learning with Errors Key Encapsulation
@@ -39,36 +37,61 @@ class FrodoAPI640(CryptoKem):
 
         # Selecting SHAKE XOF function for the KEM and noise sampling
         shake = SHA202.shake128
+
+        # MAYBE PARAMS HERE???
     #
 
+    # FrodoKEM system parameters
     Params = Params()
     CRYPTO_ALGNAME = "FrodoKEM-640"
-
-    def initialize(self):
-        # Data - vectors initialization
-        self.pk = zeros(self.Params.CRYPTO_PUBLICKEYBYTES, dtype=uint8)
-        self.sk = zeros(self.Params.CRYPTO_SECRETKEYBYTES, dtype=uint8)
-        self.ss_encap = empty(self.Params.CRYPTO_BYTES, dtype=uint8)
-        self.ss_decap = empty(self.Params.CRYPTO_BYTES, dtype=uint8)
-        self.ct = empty(self.Params.CRYPTO_CIPHERTEXTBYTES, dtype=uint8)
-    #
-
-    def __init__(self):
-        self.initialize()
-    #
+    pk = zeros(Params.CRYPTO_PUBLICKEYBYTES, dtype=uint8)
+    sk = zeros(Params.CRYPTO_SECRETKEYBYTES, dtype=uint8)
+    ss_encap = zeros(Params.CRYPTO_BYTES, dtype=uint8)
+    ss_decap = zeros(Params.CRYPTO_BYTES, dtype=uint8)
+    ct = zeros(Params.CRYPTO_CIPHERTEXTBYTES, dtype=uint8)
 
     # FrodoKEM-640 functions
     @classmethod
     def crypto_kem_keypair_frodo640(cls):
-        cls.initialize(cls)
+        # Re - initialization of Frodo640 class params for each key generation
+        cls.pk = zeros(cls.Params.CRYPTO_PUBLICKEYBYTES, dtype=uint8)
+        cls.sk = zeros(cls.Params.CRYPTO_SECRETKEYBYTES, dtype=uint8)
+        cls.ss_encap = zeros(cls.Params.CRYPTO_BYTES, dtype=uint8)
+        cls.ss_decap = zeros(cls.Params.CRYPTO_BYTES, dtype=uint8)
+        cls.ct = zeros(cls.Params.CRYPTO_CIPHERTEXTBYTES, dtype=uint8)
+
         return CryptoKem.keypair(cls.Params, cls.pk, cls.sk)
     #
     @classmethod
     def crypto_kem_enc_frodo640(cls):
+        print("before enc - pk: ", list(cls.pk)[-5:])
+        print("before enc - sk: ", list(cls.sk)[-5:])
+        print("before enc - encap: ", list(cls.ss_encap))
+        print("before enc - decap: ", list(cls.ss_decap))
+        print("before enc - ct: ", list(cls.ct)[-5:])
+        # MAYBE SEND HERE COPIES OF PARAMS THAT DO NOT NEED TO CHANGE???
         return CryptoKem.enc(cls.Params, cls.ct, cls.ss_encap, cls.pk)
     #
     @classmethod
     def crypto_kem_dec_frodo640(cls):
+        print("after enc - pk: ", list(cls.pk)[-5:])
+        print("after enc - sk: ", list(cls.sk)[-5:])
+        print("after enc - encap: ", list(cls.ss_encap)[-5:])
+        print("after enc - decap: ", list(cls.ss_decap)[-5:])
+        print("after enc - ct: ", list(cls.ct)[-5:])
         return CryptoKem.dec(cls.Params, cls.ss_decap, cls.ct, cls.sk)
+    #
+
+    # Functions that allow external classes to set own FrodoKEM properties
+    # For shared secret generation
+    def set_public_key(self, public_key: 'external public key [list]'):
+        self.pk = array(public_key, dtype=uint8)
+    #
+    def set_secret_key(self, secret_key: 'external secret key [list]'):
+        self.sk = array(secret_key, dtype=uint8)
+    #
+
+    def set_ciphertext(self, ciphertext: 'external ciphertext [list]'):
+        self.ct = array(ciphertext, dtype=uint8)
     #
 #

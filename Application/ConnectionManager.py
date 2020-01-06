@@ -5,6 +5,7 @@ import json
 import random
 from time import sleep
 from datetime import datetime
+from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640 as FrodoAPI
 # TODO: ANNOTATIONS
 
 class ConnectionManager:
@@ -41,6 +42,70 @@ class ConnectionManager:
 
         self.log("[*] Listening on %s:%d" % (self.ip, self.port))
 
+        # self.Frodo = FrodoAPI()
+        # print("frodoAPI: ", self.Frodo)
+        # self.server_pk, self.server_sk = self.Frodo.crypto_kem_keypair_frodo640()
+        # open('server_pk.key', 'wb').write(bytearray(self.server_pk))
+        # print("saved to file")
+        # maybe frodoapi1 api2????
+
+        # For public key exchange
+        self.FrodoAPI1 = FrodoAPI()
+        self.FrodoAPI2 = FrodoAPI()
+        #
+        # self.FrodoAPI.set_secret_key(list(open('server_sk.key', 'rb').read()))
+        # open('server_sk.key', 'wb').write(bytearray(self.server_pk))
+
+        # # Generating keys - TODO: log generating keys
+        self.server_pk, self.server_sk = self.FrodoAPI1.crypto_kem_keypair_frodo640()
+        #
+        open('server_pk.key', 'wb').write(bytearray(self.server_pk))
+        #
+        # # CLIENT
+        self.FrodoAPI2.set_public_key(list(open('server_pk.key', 'rb').read()))
+        c, ss = self.FrodoAPI2.crypto_kem_enc_frodo640()
+        open('server_c.key', 'wb').write(bytearray(c))
+        print('client ss: ', ss)
+        # #
+        # #
+        # # SERVER
+        self.FrodoAPI1.set_ciphertext(list(open('server_c.key', 'rb').read()))
+        ss1 = self.FrodoAPI1.crypto_kem_dec_frodo640()
+        print('server ss: ', ss1)
+        exit(-1)
+
+
+
+
+        # self.FrodoAPI.set_public_key(list(open('server_pk.key', 'rb').read()))
+        # self.FrodoAPI.set_secret_key(list(open('server_sk.key', 'rb').read()))
+        # c, ss = FrodoAPI.crypto_kem_enc_frodo640()
+        # print('ss: ', ss)
+        #
+        # self.FrodoAPI.set_public_key(list(open('server_pk.key', 'rb').read()))
+        # self.FrodoAPI.set_secret_key(list(open('server_sk.key', 'rb').read()))
+        # c, ss = FrodoAPI.crypto_kem_enc_frodo640()
+        # print('ss: ', ss)
+        #
+        # self.FrodoAPI.set_public_key(list(open('server_pk.key', 'rb').read()))
+        # self.FrodoAPI.set_secret_key(list(open('server_sk.key', 'rb').read()))
+        # c, ss = FrodoAPI.crypto_kem_enc_frodo640()
+        # print('ss: ', ss)
+        # self.FrodoAPI.set_ciphertext(list(open('server_c.key', 'rb').read()))
+        # open('server_c.key', 'wb').write(bytearray(c))
+        # ss1 = FrodoAPI.crypto_kem_dec_frodo640()
+
+        # print('ss: ', ss1)
+        # exit(-1)
+        # print('server ss: ', FrodoKEM.crypto_kem_dec())
+        # FrodoAPI.crypto_kem_dec_frodo640()
+        # FrodoAPI.crypto_kem_enc_frodo640()
+        # self.server_pk = self.pk # This you will send
+        # print(self.server_pk)
+        # Client gets it, encapsulates it and has ready vector
+        # Server decapsulates it and has the same vector
+        # What with ct? Is it needed?
+
         while True:
             # Accept connection and add to list of connections
             client, addr = self.socket.accept()
@@ -48,8 +113,17 @@ class ConnectionManager:
 
             # Get user message, send it to all clients, optionally display
             message = self.handle_user_request(client)
+
+            if message is None:
+                # No message was sent. User requested another action (i.e. server's public key)
+                continue
+
+            # Adding new connection to the server
             sender = self.add_server_conn(client, addr, message['port'])
             self.log(f"[*] New sender added: {sender[1]}:{sender[2]}")
+
+            # If user sent message broadcast it to other connected clients
+            # and optionally display
             self.broadcast_message(message, sender)
             if self.mode == 'visual':
                 chatref.display_message_main(message)
@@ -59,6 +133,24 @@ class ConnectionManager:
         # start listening for any message broadcast by the server
         self.answer_listener = threading.Thread(target=self.wait_for_response, args=(chatref, ))
         self.answer_listener.start()
+
+        self.Frodo = FrodoAPI()
+        print("frodoAPI: ", self.Frodo)
+
+        # Start secure connection
+        # self.server_pk = self.request_secure_conn_from_server()
+        print("reading key")
+        self.Frodo.set_public_key(list(open('server_pk.key', 'rb').read()))
+        # print("pk: ", self.server_pk)
+        # self.Frodo.set_public_key(self.server_pk)
+        # self.ct, self.shared_secret = self.Frodo.crypto_kem_enc_frodo640()
+        c, ss = self.Frodo.crypto_kem_enc_frodo640()
+        open('server_c.key', 'wb').write(bytearray(c))
+        print('client ss: ', ss)
+        sleep(1)
+        self.send_encrypted_secret_to_server([1,2,3])
+        # print("ct: ", self.ct)
+        # print("shared: ", self.shared_secret)
     #
 
     # Client will wait for any messages send by the server
@@ -91,10 +183,23 @@ class ConnectionManager:
             con.close()
     #
 
+    # Send message to the server
     def send_message(self, message):
         message['port'] = self.client_port
         response = self.remote.send_message(message)
         self.log(f"[*] Sending message returned: {response.decode()}")
+    #
+
+    # Request public key from server
+    def request_secure_conn_from_server(self):
+        server_public_key = list(self.remote.get_key())
+        return server_public_key
+    #
+
+    # After receiving public key calculate shared secret and ciphertext.
+    # Next - send ciphertext back to the server (LWE-based key exchange)
+    def send_encrypted_secret_to_server(self, ciphertext):
+        self.remote.send_ciphertext(list(bytearray(ciphertext)))
     #
 
     def handle_user_request(self, client):
@@ -116,6 +221,9 @@ class ConnectionManager:
             client.close()
             return
 
+        # print("REC: ", data)
+        # print("end of data: ")
+
         # Interpret sent structure into function
         remote_name = json.loads(data)['func']
         remote_args = tuple(json.loads(data)['argv'])
@@ -132,14 +240,49 @@ class ConnectionManager:
         # Check arguments passed for the function
         for arg_type, remote_arg in zip(func['argv'], remote_args):
             if type(remote_arg) is not arg_type:
-                self.log(f"[!] Incorrect argument type: {arg_type} {type(remote_arg)}")
+                self.log(f"[!] Incorrect argument type - expected: {arg_type} got: {type(remote_arg)}")
                 client.close()
                 return
 
-        # If reach this point, inform user that function succeeded and return its value
-        client.sendall(struct.pack("<I", len(self.success)))
-        client.sendall(self.success)
-        return func['f'](*remote_args)
+        # Returned by RPC server function
+        received = func['f'](*remote_args)
+
+        # Client requested some action from server instead of sending message
+        if 'action' in received:
+            # Client requested server's public key
+            if received['action'] == 'request_secure_connection':
+                # Return server's public key
+                #key = bytearray(list(self.server_pk))
+                key = bytearray([1,2,3])
+                client.sendall(struct.pack("<I", len(key)))
+                client.sendall(key)
+                self.log(f"[*] Sending server's public key back to the client: {client}")
+                return
+        # After public key is sent, client will send back ciphertext
+        elif 'ciphertext' in received:
+            self.secure_connection = True
+            # print("ciphertext: ", received['ciphertext'])
+
+            self.Frodo.set_ciphertext(list(open('server_c.key', 'rb').read()))
+            ss1 = self.Frodo.crypto_kem_dec_frodo640()
+            print('server ss: ', ss1)
+            exit(-1)
+
+            # self.Frodo.set_ciphertext(list(received['ciphertext']))
+            # shared = self.Frodo.crypto_kem_dec_frodo640()
+            # print("shared: ", shared)
+            client.sendall(struct.pack("<I", len(self.success)))
+            client.sendall(self.success)
+            return
+
+
+        else:
+            # Default action is sending message
+            # If reach this point, inform user that function succeeded
+            client.sendall(struct.pack("<I", len(self.success)))
+            client.sendall(self.success)
+
+        return received
     #
 
     # Add new incoming connection to server list of connections
@@ -186,7 +329,9 @@ class ConnectionManager:
             self.ip = ip
             self.port = port
             self.shared = {
-            'send_message': { 'argv': [dict], 'f': self.rpc_send_message}}
+            'send_message': { 'argv': [dict], 'f': self.rpc_send_message},
+            'get_key': { 'argv': [], 'f': self.rpc_get_public_keyKEM},
+            'send_ciphertext': { 'argv': [list], 'f': self.rpc_send_ciphetextKEM}}
         #
 
         def connect(self):
@@ -219,11 +364,11 @@ class ConnectionManager:
 
                 # Receive back value returned by function
                 data_len = struct.unpack('<I', data)[0]
-                data = self.socket.recv(data_len)
+                received_data = self.socket.recv(data_len)
 
                 # If server responded return received data
-                if data:
-                    return data
+                if received_data:
+                    return received_data
 
                 self.disconnect()
 
@@ -232,6 +377,14 @@ class ConnectionManager:
 
         def rpc_send_message(self, message):
             return message
+        #
+
+        def rpc_get_public_keyKEM(self):
+            return {'action': 'request_secure_connection'}
+        #
+
+        def rpc_send_ciphetextKEM(self, ciphertext):
+            return {'ciphertext': ciphertext}
         #
     #
 #

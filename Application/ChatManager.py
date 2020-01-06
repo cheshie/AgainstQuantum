@@ -5,6 +5,7 @@ import string
 import threading
 from time import sleep
 from Application.ConnectionManager import ConnectionManager
+
 #from typing import Dict, Tuple, #TypedDict
 # TODO: if window is too small, it crashes
 # TODO: implement thread with a stack that receives messages and prints them
