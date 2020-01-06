@@ -13,6 +13,9 @@ def get_system(system):
     global crypto_kem_keypair
     global crypto_kem_enc
     global crypto_kem_dec
+    global set_public_key
+    global set_secret_key
+    global set_ciphertext
 
     if system is 'Frodo640':
         from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640
@@ -20,6 +23,9 @@ def get_system(system):
         crypto_kem_keypair = FrodoAPI.crypto_kem_keypair_frodo640
         crypto_kem_enc = FrodoAPI.crypto_kem_enc_frodo640
         crypto_kem_dec = FrodoAPI.crypto_kem_dec_frodo640
+        set_public_key = FrodoAPI.kem.set_public_key
+        set_secret_key = FrodoAPI.kem.set_secret_key
+        set_ciphertext = FrodoAPI.kem.set_ciphertext
     elif system is 'Frodo976':
         pass
     elif system is 'Frodo1344':
@@ -43,7 +49,7 @@ def kem_test(named_parameters, iterations=5, system='Frodo640'):
         for x in range(iterations):
             crypto_kem_keypair()
             current_operation += 1
-            ss_encap = crypto_kem_enc()
+            c, ss_encap = crypto_kem_enc()
             current_operation += 1
             ss_decap = crypto_kem_dec()
             current_operation += 1
@@ -92,7 +98,7 @@ def kem_test(named_parameters, iterations=5, system='Frodo640'):
     test_thread.start()
     time_started = datetime.now()
 
-    while test_thread.isAlive():
+    while test_thread.is_alive():
         _ = os.system("clear")
         print_title_table()
         print_stats()
@@ -128,7 +134,7 @@ def kem_bench(kem_test_iterations=1, repetitions=2, system='Frodo640'):
 
 
 def main():
-    OK = kem_test(FrodoAPI.CRYPTO_ALGNAME)
+    OK = kem_test(FrodoAPI.kem.CRYPTO_ALGNAME)
 
     if OK is True:
         kem_bench()

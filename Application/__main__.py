@@ -2,7 +2,7 @@
 
 from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640
 from FrodoKEM.tests.test_kem import kem_test, kem_bench
-from Application.ConnectionManager import ConnectionManager
+from Application.ChatManager import ChatManager
 import argparse
 import sys
 
@@ -35,13 +35,13 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     if args.c is True:
-        ConnectionManager().start_client()
+        ChatManager().start_client()
     if args.l is True:
-        ConnectionManager().start_server()
+        ChatManager().start_server()
 
     if args.test is True:
         if args.fails is True:
-            kem_test(FrodoAPI640.CRYPTO_ALGNAME, iterations=int(args.repeat), system=args.system)
+            kem_test(FrodoAPI640.kem.CRYPTO_ALGNAME, iterations=int(args.repeat), system=args.system)
         else:
             if int(args.repeat) < 2:
                 print("Error. Time measurement must be repeated at least 2 times (--repeat). Exiting")

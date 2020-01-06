@@ -1,10 +1,10 @@
-from numpy import array, zeros, uint8, uint16, frombuffer, copyto
+from numpy import array, zeros, uint8, uint16, frombuffer, copyto, empty
 import secrets
 from FrodoKEM.src.config import LE_TO_UINT16, UINT16_TO_LE
 from FrodoKEM.src.frodo_macrify import Frodo
 from FrodoKEM.src.noise import frodo_sample_n
 from FrodoKEM.src.util import frodo_pack, frodo_unpack
-empty = zeros
+# empty = zeros
 
 
 class CryptoKem(Frodo):
@@ -155,12 +155,12 @@ class CryptoKem(Frodo):
         Fin_k[:pm.CRYPTO_BYTES] = 0
         shake_input_seedSE[:1 + pm.CRYPTO_BYTES] = 0
 
-        return ss
+        return ct, ss
     #
 
     @staticmethod
     def dec(pm: 'Referencing params of specific FrodoKEM version', ss: 'shared secret', ct: 'ciphertext',
-            sk: 'public key') -> array:
+            sk: 'private key') -> array:
         # FrodoKEM's key decapsulation
         B  = zeros(pm.PARAMS_N * pm.PARAMS_NBAR, dtype=uint16)
         Bp = zeros(pm.PARAMS_N * pm.PARAMS_NBAR, dtype=uint16)
