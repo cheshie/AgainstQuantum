@@ -15,6 +15,7 @@ def parse_arguments(args_parser = argparse.ArgumentParser(prog='appname', descri
     args_parser.add_argument('-l', help='start server', action='store_true', default=False)
     args_parser.add_argument('-c', help='connect to a server', action='store_true', default=False)
     args_parser.add_argument('--secure', help='starts secure connection', action='store_true', default=False)
+    args_parser.add_argument('--mode', help='starts secure connection', default='text', choices=['visual','text']) # metavar=('bar', 'baz'),
     args_parser.add_argument('--test', help='time benchmark of [operations]', action='store_true', default=False)
     args_parser.add_argument('--ops', help='possible operations are: keyGeneration, encapsulation, decapsulation',
                              default='keyGeneration')
@@ -35,9 +36,9 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     if args.c is True:
-        ChatManager().start_client()
+        ChatManager(mode=args.mode, encryption=args.secure).start_client()
     if args.l is True:
-        ChatManager().start_server()
+        ChatManager(mode=args.mode, encryption=args.secure).start_server()
 
     if args.test is True:
         if args.fails is True:

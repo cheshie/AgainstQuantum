@@ -26,8 +26,11 @@ from Application.ConnectionManager import ConnectionManager
 
 
 class ChatManager:
-    def __init__(self, mode='text'):
-        self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
+    def __init__(self, mode='text', encryption=False, ip="0.0.0.0", port=9999, client_port=9777, nick=None):
+        if nick is None:
+            self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
+        else:
+            self.nick = nick
         self.prompt = lambda n: '#'+ str(n) + " > "
         self.curr_msg_row_nr = 1
         self.publ_row_nr     = 1
@@ -37,7 +40,7 @@ class ChatManager:
         self.current_message = {"nick": self.nick, "msg": str()}#Dict[{"nick":self.nick, "msg":str()}]
         self.archive = ()
         self.mode = mode
-        self.connection = ConnectionManager(mode=self.mode)
+        self.connection = ConnectionManager(mode=self.mode, encryption=encryption, ip=ip, port=port, client_port=client_port)
         self.message_received = False
 
         # Standard setup. Probably don't need to change this
@@ -99,7 +102,7 @@ class ChatManager:
 
         while True:
             message = self.get_user_message()
-            self.connection.send_message(message)
+            self.connection.send_message(message.copy())
             if self.mode == 'visual':
                 self.display_message_main(message)
     #
