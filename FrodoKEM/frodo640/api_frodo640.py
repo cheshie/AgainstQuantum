@@ -53,20 +53,20 @@ class FrodoAPI640(CryptoKem):
             if len(public_key) == len(self.pk):
                 self.pk = array(public_key, dtype=uint8)
             else:
-                raise Exception('Provided key size differs from that in parameters.')
+                raise Exception('FrodoKEM: Provided key size differs from that in parameters.')
         #
         def set_secret_key(self, secret_key: 'external secret key [list]'):
             if len(secret_key) == len(self.sk):
                 self.sk = array(secret_key, dtype=uint8)
             else:
-                raise Exception('Provided key size differs from that in parameters.')
+                raise Exception('FrodoKEM: Provided key size differs from that in parameters.')
         #
 
         def set_ciphertext(self, ciphertext: 'external ciphertext [list]'):
             if len(ciphertext) == len(self.ct):
                 self.ct = array(ciphertext, dtype=uint8)
             else:
-                raise Exception('Provided key size differs from that in parameters.')
+                raise Exception('FrodoKEM: Provided key size differs from that in parameters.')
         #
     #
 

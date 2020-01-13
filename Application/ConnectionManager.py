@@ -9,50 +9,53 @@ from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640 as FrodoAPI
 from Crypto.Cipher import AES
 import binascii
 
-from numpy import array, uint8
-# TODO: ANNOTATIONS
-# ISSUES: secure connection does not work with more than one client (shared key mismatch - on the same machine)
 
 class ConnectionManager:
     # Text mode or graphical mode. Is set in class instance
     mode = None
 
-    def __init__(self, ip="0.0.0.0", port=9999, client_port=9777, client_ip='0.0.0.0',
-                 socket_type=socket.SOCK_STREAM, mode='visual', encryption=True):
+    def __init__(self, mode='text', socket_type = socket.SOCK_STREAM, setup=None):
         # For both server and client
         self.socket = socket.socket(socket.AF_INET, socket_type)
 
         # For server - it will listen on this pair
         # For client - it will connect using this pair
-        self.ip   = ip
-        self.port = port
+        self.ip   = "0.0.0.0" if setup['a'] is None else setup['a']
+        self.port = 9999 if setup['p'] is None else setup['p']
 
         # Client will listen on this port and addr for any messages sent to
         # The server by other users
-        self.client_ip = client_ip
-        self.client_port = client_port
+        self.client_ip = "0.0.0.0"
+        self.client_port = 9777 if setup['clport'] is None else setup['clport']
 
         # Maintain a list of all connections to the server (list of sockets, list of IPs, list of ports)
         self.server_conns = (list(), list(), list())
         ConnectionManager.mode = mode
 
+        self.server_limit = 5 if setup['svconn'] is None else int(setup['svconn'])
+
         # Class that brings RPC capability, default success response for its functions
         self.remote = self.RemoteAPI(self.ip, self.port)
         self.success = json.dumps({'code': 200}).encode()
-        self.error_insecure = json.dumps({'code': 'this server is secure. Connect with --secure option'}).encode()
+        self.error_insecure = json.dumps({'code': 401}).encode()
 
         # True if user requested secure connection, otherwise all data will be sent
         # in plaintext
-        self.encryption = encryption
+        self.encryption =  False if setup['secure'] is None else setup['secure']
         self.KeyExchange = self.KeyExchanger()
     #
 
-    def start_server(self, chatref, backlog_conns=5):
+    def __del__(self):
+        if hasattr(self, 'answer_listener'):
+            self.answer_listener.join()
+    #
+
+    def start_server(self, chatref):
         # Start the server on specific IP and port listening on
         self.socket.bind((self.ip, self.port))
 
         # Server start listening with a max backlog of connections set to 5
-        self.socket.listen(backlog_conns)
+        self.socket.listen(self.server_limit)
 
         self.log("[*] Listening on %s:%d" % (self.ip, self.port))
 
@@ -81,18 +84,32 @@ class ConnectionManager:
     #
 
     def start_client(self, chatref):
-        # start listening for any message broadcast by the server
-        self.answer_listener = threading.Thread(target=self.wait_for_response, args=(chatref, ))
-        self.answer_listener.start()
+        try:
+            # Firstly try to connect to the server - securely or just check if its alive
+            if self.encryption:
+                try:
+                    self.KeyExchange.connect_to_server(self.remote)
+                except Exception as ex:
+                    self.log(f"[!] Key exchange failed. Reason: {ex}")
+                    exit(-1)
+            else:
+                serv_status = self.check_server_is_online()
+                # print("serv_status: ", serv_status['code'])
+                if serv_status['code'] == 401:
+                    self.log('[!] This server is secure. Connect with --secure option. Exiting')
+                    exit(-1)
+                self.log("[*] Client started without --secure option, connection will be insecure")
 
-        if self.encryption:
-            self.KeyExchange.connect_to_server(self.remote)
-        else:
-            self.log("[*] Connection with the server is insecure.")
+            # start listening for any message broadcast by the server
+            self.answer_listener = threading.Thread(target=self.wait_for_response, args=(chatref, ))
+            self.answer_listener.start()
 
-        if self.encryption and self.KeyExchange.secure_connection:
-            self.Enc = self.Encryption(self.KeyExchange.shared_secret)
-            self.log("[*] Connection with the server is now secure.")
+            if self.encryption and self.KeyExchange.secure_connection:
+                self.Enc = self.Encryption(self.KeyExchange.shared_secret)
+                self.log("[*] Connection with the server is now secure.")
+        except KeyboardInterrupt:
+            self.answer_listener.alive = False
+            self.answer_listener.join()
     #
 
     # Client will wait for any messages send by the server
@@ -117,12 +134,18 @@ class ConnectionManager:
         self.log("[*] Listening for messages from server on %s:%d" % (self.client_ip, self.client_port))
 
         while True:
-            con, add = self.client_socket.accept()
-            # Receive information about size of message sent by the server
-            # and then receive and display the message
-            size = struct.unpack('<I', con.recv(4))[0]
-            chatref.display_message_main(json.loads(con.recv(size).decode()), reset=True)
-            con.close()
+            con = None
+            try:
+                con, add = self.client_socket.accept()
+                # Receive information about size of message sent by the server
+                # and then receive and display the message
+                size = struct.unpack('<I', con.recv(4))[0]
+                chatref.display_message_main(json.loads(con.recv(size).decode()), reset=True)
+                con.close()
+            except KeyboardInterrupt:
+                if con is not None:
+                    con.close()
+                return
     #
 
     # Send message to the server
@@ -136,7 +159,12 @@ class ConnectionManager:
         #
 
         response = self.remote.send_message(message)
-        self.log(f"[*] Sending message returned: {response.decode()}")
+        self.log(f"[*] Sending message returned: {response.decode()}", file=True)
+    #
+
+    # method for client to check if server is working
+    def check_server_is_online(self):
+        return json.loads(self.remote.check_server({'action' : 'check_server_alive'}))
     #
 
     def handle_user_request(self, client):
@@ -184,6 +212,21 @@ class ConnectionManager:
         # Client requested some action from server instead of sending message
         if 'action' in received:
             self.KeyExchange.calculate_shared_secret_server_FrodoKEM(received_data=received, client=client)
+
+            # Client 'pings' server
+            if received['action'] == 'check_server_alive':
+                # If server is secure and an insecure client connects, send error
+                # Otherwise confirm that server is alive
+                if self.encryption is True:
+                    self.log(f"[*] Insecure client tried to connect, denied: {client}")
+                    client.sendall(struct.pack("<I", len(self.error_insecure)))
+                    client.sendall(self.error_insecure)
+                else:
+                    client.sendall(struct.pack("<I", len(self.success)))
+                    client.sendall(self.success)
+                    self.log(f"[*] Sending server's status to the client: {client}")
+                return None
+            #
 
             # If user requested information from server
             if isinstance(received['action'], dict) == False:
@@ -248,10 +291,10 @@ class ConnectionManager:
     #
 
     @classmethod
-    def log(cls, msg):
-        if cls.mode == 'text':
+    def log(cls, msg, file=False):
+        if cls.mode == 'text' and file == False:
             print(msg)
-        elif cls.mode == 'visual':
+        elif cls.mode == 'visual' or file == True:
             logfile = open(datetime.now().strftime("%m-%d-%Y"+".log"), 'a+')
             logfile.write(datetime.now().strftime("%H:%M:%S") + " : " + msg + '\n')
     #
@@ -345,11 +388,14 @@ class ConnectionManager:
 
             # After receiving public key calculate shared secret and ciphertext.
             # Next - send ciphertext back to the server (LWE-based key exchange)
-            if self.mode == 'online':
-                remote.key_exchange({'action': {'ciphertext': list(bytearray(list(self.ct)))}})
-                open('server_c.key', 'wb').write(bytearray(list(self.ct)))
-            else:
-                open('server_c.key', 'wb').write(bytearray(list(self.ct)))
+            try:
+                if self.mode == 'online':
+                    remote.key_exchange({'action': {'ciphertext': list(bytearray(list(self.ct)))}})
+                    open('server_c.key', 'wb').write(bytearray(list(self.ct)))
+                else:
+                    open('server_c.key', 'wb').write(bytearray(list(self.ct)))
+            except OSError as oerr:
+                ConnectionManager.log("[!] Failed writing to the log file. Check permissions")
 
             self.secure_connection = True
         #
@@ -390,7 +436,8 @@ class ConnectionManager:
             self.port = port
             self.shared = {
             'send_message': { 'argv': [dict], 'f': self.rpc_send_message},
-            'key_exchange': { 'argv': [dict], 'f': self.rpc_key_exchange}}
+            'key_exchange': { 'argv': [dict], 'f': self.rpc_key_exchange},
+            'check_server': { 'argv': [dict], 'f': self.rpc_check_server}}
         #
 
         def connect(self):
@@ -407,8 +454,9 @@ class ConnectionManager:
                 try:
                     self.connect()
                 except Exception as ex:
-                    ConnectionManager.log("Connection to the server failed. Please try again")
-                    ConnectionManager.log(f"Reason: {ex}")
+                    ConnectionManager.log("[!] Connection to the server failed. See log file for details. Exiting")
+                    ConnectionManager.log(f"Reason: {ex}", file=True)
+                    exit(-1)
 
                 # Get function skeleton
                 fun_info = json.dumps({'func': name, 'argv': list(args)})
@@ -445,5 +493,7 @@ class ConnectionManager:
         def rpc_key_exchange(self, request):
             return request
         #
+        def rpc_check_server(self, request):
+            return request
     #
 #

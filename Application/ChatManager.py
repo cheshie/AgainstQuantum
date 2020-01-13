@@ -26,22 +26,32 @@ from Application.ConnectionManager import ConnectionManager
 
 
 class ChatManager:
-    def __init__(self, mode='text', encryption=False, ip="0.0.0.0", port=9999, client_port=9777, nick=None):
-        if nick is None:
+    def __init__(self, chat=None, connection=None):
+        # User can set a custom nick
+        if chat['nick'] is None:
             self.nick   = ''.join(random.choice(string.ascii_uppercase+string.digits) for i in range(4))
         else:
-            self.nick = nick
-        self.prompt = lambda n: '#'+ str(n) + " > "
+            self.nick = chat['nick']
+        # Creating prompt from user nick
+        self.prompt = lambda n: '#' + str(n) + " > "
+        # connection parameters
+        self.connection = ConnectionManager(mode=chat['mode'], setup=connection)
+
+        # Contains message and nick being currently written
+        self.current_message = {"nick": self.nick, "msg": str()}  # Dict[{"nick":self.nick, "msg":str()}]
+        # Set to true when chat receives message (for display in text mode)
+        self.message_received = False
+        # TODO: WHAT ??
+        self.current_user_prompt = ""
+        # Will contain all received/written messages
+        self.archive = ()
+
+        # Chat specific settings and set up
+        self.mode = chat['mode'] # visual or text
         self.curr_msg_row_nr = 1
         self.publ_row_nr     = 1
         self.user_msg_box = None
         self.all_msg_box  = None
-        self.current_user_prompt = ""
-        self.current_message = {"nick": self.nick, "msg": str()}#Dict[{"nick":self.nick, "msg":str()}]
-        self.archive = ()
-        self.mode = mode
-        self.connection = ConnectionManager(mode=self.mode, encryption=encryption, ip=ip, port=port, client_port=client_port)
-        self.message_received = False
 
         # Standard setup. Probably don't need to change this
         # Clear and refresh the screen for a blank canvas
@@ -61,6 +71,7 @@ class ChatManager:
             curses.nocbreak()
             curses.echo()
             curses.endwin()
+            print("[!] Application exited with error. Check log for details. ")
     #
 
     def get_user_message(self):
@@ -96,22 +107,40 @@ class ChatManager:
     #
 
     def start_client(self):
-        if self.mode == 'visual':
-            self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        # Firstly start client that will ensure connection is right, then start the chat
         self.connection.start_client(self)
 
-        while True:
-            message = self.get_user_message()
-            self.connection.send_message(message.copy())
-            if self.mode == 'visual':
-                self.display_message_main(message)
+        if self.mode == 'visual':
+            self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+
+        try:
+            while True:
+                message = self.get_user_message()
+                self.connection.send_message(message.copy())
+                if self.mode == 'visual':
+                    self.display_message_main(message)
+        except KeyboardInterrupt:
+            self.__del__()
+            self.connection.log("\n[!] Combination [Ctrl^C] detected. Exiting.")
+        except Exception as ex:
+            self.__del__()
+            self.connection.log("[!] Error. Reason: " + str(ex))
     #
 
     def start_server(self):
-        if self.mode =='visual':
-            self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
+        try:
+            if self.mode =='visual':
+                self.all_msg_box = self.initialize_window(self.height - self.height // 7, self.width, 0, 0)
 
-        self.connection.start_server(chatref=self)
+            self.connection.start_server(chatref=self)
+        except KeyboardInterrupt:
+            self.connection.log("\n[!] Combination [Ctrl^C] detected. Exiting.")
+            self.__del__()
+            exit(0)
+        except Exception as ex:
+            self.connection.log("[!] Error. Reason: " + str(ex))
+            self.__del__()
+            exit(0)
     #
 
     def initialize_window(self, ht, wdh, ystart, xstart, is_user=False):
