@@ -6,24 +6,6 @@ import threading
 from time import sleep
 from Application.ConnectionManager import ConnectionManager
 
-#from typing import Dict, Tuple, #TypedDict
-# TODO: if window is too small, it crashes
-# TODO: implement thread with a stack that receives messages and prints them
-# TODO: cursos movement => back and forth and up to move around edited message
-
-# Heres the thing
-        # do not separate prompt and message, the prompt should be a part of it
-        # placed at the start.
-        # If entire message is longer than etc. then display last part of it
-
-        # if usr_prompt is not self.current_user_prompt and usr_prompt is not None:
-        # window.addstr(row_nr, 1, usr_prompt)
-
-# def send_message(self, message):
-#     self.archive += (message, )
-#     # self.all_msg_box.refresh()
-# #
-
 
 class ChatManager:
     def __init__(self, chat=None, connection=None):
@@ -38,13 +20,11 @@ class ChatManager:
         self.connection = ConnectionManager(mode=chat['mode'], setup=connection)
 
         # Contains message and nick being currently written
-        self.current_message = {"nick": self.nick, "msg": str()}  # Dict[{"nick":self.nick, "msg":str()}]
+        self.current_message = {"nick": self.nick, "msg": str()}
         # Set to true when chat receives message (for display in text mode)
         self.message_received = False
-        # TODO: WHAT ??
-        self.current_user_prompt = ""
         # Will contain all received/written messages
-        self.archive = ()
+        self.archive = []
 
         # Chat specific settings and set up
         self.mode = chat['mode'] # visual or text
@@ -87,7 +67,6 @@ class ChatManager:
             k = self.stdscr.getch()
 
             if k in [curses.KEY_ENTER, ord('\n'), 10, 13]:
-                # self.send_message(self.current_message)
                 return self.current_message
 
             if k in [curses.KEY_BACKSPACE]:
@@ -153,6 +132,9 @@ class ChatManager:
     #
 
     def display_message_main(self, message, reset=False):
+        # Add received message to the archive of messages
+        self.archive.append(message)
+
         if self.mode == 'text':
             # If new message from server arrived, reset prompt for the local user
             if reset == True:
@@ -167,7 +149,6 @@ class ChatManager:
         winh, winw = self.all_msg_box.getmaxyx()
         winw = winw - len(self.prompt(self.nick)) - 2
         winh = winh - 2
-        # message = self.archive[-1]
 
         if self.publ_row_nr <= winh:
             if len(message['msg']) > winw:
