@@ -5,6 +5,7 @@ import string
 import threading
 from time import sleep
 from Application.ConnectionManager import ConnectionManager
+import traceback
 
 
 class ChatManager:
@@ -103,7 +104,8 @@ class ChatManager:
             self.connection.log("\n[!] Combination [Ctrl^C] detected. Exiting.")
         except Exception as ex:
             self.__del__()
-            self.connection.log("[!] Error. Reason: " + str(ex))
+            self.connection.log("[!] Error. Reason: \n")
+            print(traceback.format_exc())
     #
 
     def start_server(self):
@@ -117,7 +119,8 @@ class ChatManager:
             self.__del__()
             exit(0)
         except Exception as ex:
-            self.connection.log("[!] Error. Reason: " + str(ex))
+            self.connection.log("[!] Error. Reason: \n", traceback.format_exc())
+            print(traceback.format_exc())
             self.__del__()
             exit(0)
     #

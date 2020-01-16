@@ -3,11 +3,14 @@ import threading
 import struct
 import json
 import random
+import os
 from time import sleep
 from datetime import datetime
 from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640 as FrodoAPI
 from Crypto.Cipher import AES
 import binascii
+import errno
+from socket import error as socket_error
 
 
 class ConnectionManager:
@@ -38,6 +41,9 @@ class ConnectionManager:
         self.remote = self.RemoteAPI(self.ip, self.port)
         self.success = json.dumps({'code': 200}).encode()
         self.error_insecure = json.dumps({'code': 401}).encode()
+
+        # sending file to the server
+        self.path_to_file = setup['f']
 
         # True if user requested secure connection, otherwise all data will be sent
         # in plaintext
@@ -100,13 +106,22 @@ class ConnectionManager:
                     exit(-1)
                 self.log("[*] Client started without --secure option, connection will be insecure")
 
+            # Create object used for encrypting messages
+            if self.encryption and self.KeyExchange.secure_connection:
+                self.Enc = self.Encryption(self.KeyExchange.shared_secret)
+                self.log("[*] Connection with the server is now secure.")
+
+            # Send file and exit
+            if self.path_to_file:
+                self.send_file()
+                exit(0)
+
             # start listening for any message broadcast by the server
             self.answer_listener = threading.Thread(target=self.wait_for_response, args=(chatref, ))
             self.answer_listener.start()
 
-            if self.encryption and self.KeyExchange.secure_connection:
-                self.Enc = self.Encryption(self.KeyExchange.shared_secret)
-                self.log("[*] Connection with the server is now secure.")
+
+
         except KeyboardInterrupt:
             self.answer_listener.alive = False
             self.answer_listener.join()
@@ -162,9 +177,29 @@ class ConnectionManager:
         self.log(f"[*] Sending message returned: {response.decode()}", file=True)
     #
 
+    # Client sending file
+    def send_file(self):
+        if self.path_to_file is not None:
+            if os.path.exists(self.path_to_file):
+                file_json = dict()
+                file_json['filename'] = os.path.basename(self.path_to_file)
+                file_json['contents'] = open(self.path_to_file, "rb").read().decode()
+                file_json['action'] = 'sendfile'
+                # Encrypt file
+                if self.encryption is True:
+                    file_json['filename'] = self.Enc.encrypt_message(file_json['filename'])
+                    file_json['contents'] = self.Enc.encrypt_message(file_json['contents'])
+
+                self.log("[*] Successfully sent file. Exiting.")
+                return json.loads(self.remote.send_file(file_json))
+            else:
+                self.log("[!] Provided path to file does not exist! Exiting.")
+                exit(-1)
+    #
+
     # method for client to check if server is working
     def check_server_is_online(self):
-        return json.loads(self.remote.check_server({'action' : 'check_server_alive'}))
+        return json.loads(self.remote.check_server({'action' : 'check_server_alive', 'port' : self.client_port}))
     #
 
     def handle_user_request(self, client):
@@ -187,8 +222,15 @@ class ConnectionManager:
             return
 
         # Interpret sent structure into function
-        remote_name = json.loads(data)['func']
-        remote_args = tuple(json.loads(data)['argv'])
+        try:
+            remote_name = json.loads(data)['func']
+            remote_args = tuple(json.loads(data)['argv'])
+        # Sometimes there are errors with key exchange in FrodoKEM (its probabilistic algorithm)
+        except json.decoder.JSONDecodeError as e:
+            self.log("[!] Secure connection with the client could not be established. "
+                     "Received key is in wrong format.")
+            self.log(f"[!] Details: {e}")
+            return None
 
         # Determine if server supports this function
         if remote_name not in self.remote.shared:
@@ -211,6 +253,14 @@ class ConnectionManager:
 
         # Client requested some action from server instead of sending message
         if 'action' in received:
+            # If secure client tried to connect to insecure server
+            if received['action'] == 'request_secure_connection' and self.encryption == False:
+                self.log(f"[*] Secure client tried to connect to insecure server, denied: {client}")
+                client.sendall(struct.pack("<I", len(self.error_insecure)))
+                client.sendall(self.error_insecure)
+                return None
+
+            # Use key exchange to generate ss
             self.KeyExchange.calculate_shared_secret_server_FrodoKEM(received_data=received, client=client)
 
             # Client 'pings' server
@@ -221,12 +271,28 @@ class ConnectionManager:
                     self.log(f"[*] Insecure client tried to connect, denied: {client}")
                     client.sendall(struct.pack("<I", len(self.error_insecure)))
                     client.sendall(self.error_insecure)
+                    return None
                 else:
                     client.sendall(struct.pack("<I", len(self.success)))
                     client.sendall(self.success)
                     self.log(f"[*] Sending server's status to the client: {client}")
+                return received
+
+            # Client sends file - save it in server's directory
+            if received['action'] == 'sendfile':
+                # Decrypting file
+                if self.encryption is True:
+                    received['filename'] = self.Enc.decrypt_message(received['filename'])
+                    received['contents'] = self.Enc.decrypt_message(str(received['contents']))
+
+                # Saving file to server's directory and sending response back to client
+                file_recv = open(received['filename'], 'wb')
+                file_recv.write(received['contents'].encode())
+                file_recv.close()
+                client.sendall(struct.pack("<I", len(self.success)))
+                client.sendall(self.success)
+                self.log(f'[*] Successfully received file: {received["filename"]}')
                 return None
-            #
 
             # If user requested information from server
             if isinstance(received['action'], dict) == False:
@@ -249,6 +315,9 @@ class ConnectionManager:
                     received['nick'] = self.Enc.decrypt_message(received['nick'])
                     received['msg'] = self.Enc.decrypt_message(received['msg'])
                     received['port'] = self.Enc.decrypt_message(str(received['port']))
+
+            # Log received message
+            self.log(f"[*] Received message: {received})")
 
             # Default action is sending message
             # If reach this point, inform user that function succeeded
@@ -280,14 +349,18 @@ class ConnectionManager:
             if conn[1] == sender[1] and conn[2] == sender[2]:
                 continue
 
-            # Send message to all other connected users
-            cl = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            cl.connect((conn[1], conn[2]))
-            # Send information about size of message and then message
-            cl.sendall(struct.pack("<I", len(json.dumps(message).encode())))
-            cl.sendall(json.dumps(message).encode())
-            self.log(f"[*] Message broadcast to {conn[1]+':'+str(conn[2])}")
-            cl.close()
+            try:
+                # Send message to all other connected users
+                cl = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                cl.connect((conn[1], conn[2]))
+                # Send information about size of message and then message
+                cl.sendall(struct.pack("<I", len(json.dumps(message).encode())))
+                cl.sendall(json.dumps(message).encode())
+                self.log(f"[*] Message broadcast to {conn[1] + ':' + str(conn[2])} (message: {message})")
+                cl.close()
+            except socket_error as serr:
+                if serr.errno != errno.ECONNREFUSED:
+                    self.log(f"[!] Client is no longer connected: {conn[1] + ':' + str(conn[2])}")
     #
 
     @classmethod
@@ -369,6 +442,15 @@ class ConnectionManager:
         def connect_to_server(self, remote):
             if self.mode == 'online':
                 self.server_pk = remote.key_exchange({'action': 'request_secure_connection'})
+                # If length of received data is greater than 100, it will be most likely a public key from server
+                # Otherwise it is response from (unsecure) server stating that establishing secure connection was not
+                # successful (you can connect only to secure servers with secure client)
+                # Why this hack? Without this first IF the bottom IF will crash trying to decode public key into json
+                if len(self.server_pk) < 100:
+                    if json.loads(self.server_pk.decode())['code'] == 401:
+                        ConnectionManager.log('[!] This server is not secure. Try to '
+                                              'connect without --secure option. Exiting')
+                        exit(-1)
             else:
                 self.server_pk = list(open('server_pk.key', 'rb').read())
 
@@ -437,7 +519,8 @@ class ConnectionManager:
             self.shared = {
             'send_message': { 'argv': [dict], 'f': self.rpc_send_message},
             'key_exchange': { 'argv': [dict], 'f': self.rpc_key_exchange},
-            'check_server': { 'argv': [dict], 'f': self.rpc_check_server}}
+            'check_server': { 'argv': [dict], 'f': self.rpc_check_server},
+            'send_file': { 'argv': [dict], 'f': self.rpc_send_file}}
         #
 
         def connect(self):
@@ -495,5 +578,9 @@ class ConnectionManager:
         #
         def rpc_check_server(self, request):
             return request
+        #
+        def rpc_send_file(self, file):
+            return file
+        #
     #
 #
