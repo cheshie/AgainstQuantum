@@ -94,13 +94,13 @@ Microsoft’s implementation was considerably faster. The *test_KEM.c* file was 
 Columns are similar to those in Python implementation, except for the CPU cycles. It was not possible to access them from any Python library as this is a higher abstraction layer than in plain C. To give a better picture of the size of difference between these results, they were summarized in the table below. After some simple calculations, values in the parenthesis indicate that Python implementation is only about 2500x slower than C implementation. That is the real price for comfortability that gives Python.    
 
 
-|: **Operation**	:|: Total time (s) - C 	:|: Mean time (s) - C (* 10 –6)	:|: Total time (s) - Python :|:	Mean time (s) – Python :|
+| **Operation**	| **Total time (s)- C** 	| **Mean time (s) - C (* 10 –6)	**| **Total time (s) - Python** |	**Mean time (s) – Python**|
 |--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
-|: **Key generation**	:|: 1.809	:|: 0.00180 :|: 	4109.661 (2271x ↓)	:|: 4.11 **(2283x ↓)** :| 
+| **Key generation**	| 1.809	| 0.00180 | 	4109.661 (2271x ↓)	| 4.11 **(2283x ↓)** | 
 |--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
-|: **KEM encapsulation** :|: 3.096	:|: 0.00309	:|: 7558.794 (2441x ↓)	:|: 7.559 **(2446x ↓)** :| 
+| **Encaps.** | 3.096	| 0.00309	| 7558.794 (2441x ↓)	| 7.559 **(2446x ↓)** | 
 |--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
-|: **KEM decapsulation**	:|: 2.613	:|: 0.00261	:|: 7009.201 (2682x ↓)	:|: 7.009 **(2685x ↓)** :| 
+| **Decaps.**	| 2.613	| 0.00261	| 7009.201 (2682x ↓)	| 7.009 **(2685x ↓)** | 
 
 
 
