@@ -34,30 +34,30 @@ Python implementation of the same function hides all the logic under functions t
 Examples
 ------
 This section provides information about basic usage of *Application* module. In order to get help, run module without any arguments: 
-
+```
   # python3 -m Application 
-
+```
 You will be presented with the following information: 
 
 ![Commandline options](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/command_line_options_application.png)
 
 The purpose of Chat feature in Application module is the presentation of Python’s FrodoKEM implementation in real-world scenario. The tool has a --secure option which starts secure connection with the server to exchange messages or ensures that server accepts only secure connections (when used with the server). Chat in the visual mode is presented on the figure below, and is run with the following command: 
-
+```
   # python3 -m Application -l --mode visual
-
+```
 
 ![Visual](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/application_visual.png)
 
 Application looks similarly in client mode. In order to run it, use *-c* options instead of *-L*. In order to start Chat in text mode, change *visual* parameter to *text* (which is also the default mode). The screen looks as follows in server mode: 
-
+```
   # python3 -m Application -l --mode text
-
+```
 ![Text - server](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/application_text_server.png)
 
 As can be seen on the figure, it automatically outputs all the debugging information to the stdout. In visual mode, all the logs are pushed to files marked with the current date. And this is how looks client in text mode: 
-
+```
   # python3 -m Application -c --mode text
-
+```
 ![Text - client](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/application_text_client.png)
 
 To wrap up, logic of this application is as follows - server is started at a specific port and address, either in the visual or text mode. In visual mode, only messages sent to the server are displayed in the window, and all logs are sent to the log file residing in the same directory as server. The same is for client – either visual or text mode, in the former logs go to the log file, in the latter – they are printed on the std output. Server accepts specific number of connections, which can be set with an option. It has a function of “chat room” – clients connect to it, send messages, and every message server received is sent to all connected clients, except the sender. After connecting to the server, client starts a separate thread on a specific port that listens for any incoming messages from the server. This behavior is similar to push & poll mechanism from observer pattern (Okhravi, n.d.)  
@@ -77,39 +77,39 @@ Repeat is the number of samples to benchmark, and Number specifies the number of
 
 Most interesting switch in this case is --repeat, because it gives more specific information about time of execution. The tests were run with the command:
 
-
+```
 # python3 -m Application --test --repeat 1000
-
+```
 ![Python-timing](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/FrodoKEM-timing.png)
 
 
 Microsoft’s implementation was considerably faster. The *test_KEM.c* file was changed a little - *seconds* variable was changed to 1000 in order to execute tests 1000 times. The tests were run with the following command: 
-
+```
 # cd ~/Desktop/Frodo-LWEKE
 # make clean && make && clear && ./frodo640/test_KEM 
-
+```
 
 ![C-timing](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/FrodoKEM-timing-c.png)
 
 Columns are similar to those in Python implementation, except for the CPU cycles. It was not possible to access them from any Python library as this is a higher abstraction layer than in plain C. To give a better picture of the size of difference between these results, they were summarized in the table below. After some simple calculations, values in the parenthesis indicate that Python implementation is only about 2500x slower than C implementation. That is the real price for comfortability that gives Python.    
 
-----------------------------------------------------------------------------------
-|Operation	|Total time (s) - C 	| Mean time (s) - C (* 10 –6)	| Total time (s) - Python |	Mean time (s) – Python |
-----------------------------------------------------------------------------------
-|Key generation	| 1.809	| 0.00180 | 	4109.661 (2271x ↓)	| 4.11 (2283x ↓) | 
-----------------------------------------------------------------------------------
-|KEM encapsulation	| 3.096	| 0.00309	| 7558.794 (2441x ↓)	| 7.559 (2446x ↓) | 
-----------------------------------------------------------------------------------
-|KEM decapsulation	| 2.613	| 0.00261	| 7009.201 (2682x ↓)	| 7.009 (2685x ↓) | 
-----------------------------------------------------------------------------------
+
+|: **Operation**	:|: Total time (s) - C 	:|: Mean time (s) - C (* 10 –6)	:|: Total time (s) - Python :|:	Mean time (s) – Python :|
+|--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
+|: **Key generation**	:|: 1.809	:|: 0.00180 :|: 	4109.661 (2271x ↓)	:|: 4.11 **(2283x ↓)** :| 
+|--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
+|: **KEM encapsulation** :|: 3.096	:|: 0.00309	:|: 7558.794 (2441x ↓)	:|: 7.559 **(2446x ↓)** :| 
+|--------------|-----------------------|-------------------------------|---------------------------|--------------------------|
+|: **KEM decapsulation**	:|: 2.613	:|: 0.00261	:|: 7009.201 (2682x ↓)	:|: 7.009 **(2685x ↓)** :| 
+
 
 
 Fail rate of Python implementation
 ------
 There is one caveat that comes with this implementation in Python. Once for a time the encapsulation-computed shared secret vector does not equal the one generated by decapsulation. This issue was thoroughly tested and compared with results of Microsoft’s implementation. The only source of uncertainty in the key generation is one randomly generated vector at the beginning of the algorithm, and there is similar generation as well in encapsulation algorithm. Decapsulation algorithm is completely deterministic. The problem is, for some of these mentioned randomized vectors the issue persists (only in Python implementation). It was not possible to find the source of the issue.  In order to picture this with concrete numbers, the following tests were run with command:
-
+```
   # python3 -m Application  --test  --fails  --number 1000
-
+```
 ![Microsoft's implementation](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/fail_rate_python.png)
 
 The Application module was run with specific options in order to deliver results of tests run 1000 times – key generation, encapsulation, decapsulation and comparison of computed shared secret vectors. There were only 2 incorrect results (mismatch) and 998 correct – failure rate is extremely small. The Python script shows current operation, current iteration (with a progress bar below) and based on n-1 iteration (starting iteration nr. n=1) it approximates estimated run time. The tests run 19528.35 seconds ( ~ 330 mins => 5,5 hrs). 
