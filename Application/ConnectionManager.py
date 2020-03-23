@@ -73,6 +73,10 @@ class ConnectionManager:
                 # No message was sent. User requested another action (i.e. server's public key)
                 continue
 
+            # TODO:
+            #     I should somehow add shared key to the list. How? Should I add to specific client in a list or dict?
+            #     look at the line: self.Enc = self.Encryption(self.KeyExchange.shared_secret)
+            #     here the program adds shared secret to the server. I want to add it to a specific client
             # Adding new connection to the server
             sender = self.add_server_conn(client, addr, message['port'])
 
