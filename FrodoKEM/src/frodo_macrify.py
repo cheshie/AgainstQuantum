@@ -38,7 +38,7 @@ class Frodo():
         )
 
         # Create new EVP cipher object and pass key from pk
-        cipher = AES.new(seed_A[:16], AES.MODE_ECB)
+        cipher = AES.new(bytes(seed_A[:16]), AES.MODE_ECB)
 
         for i in range(0,par_n,4):
             # Loading values in the little-endian order
@@ -47,7 +47,7 @@ class Frodo():
             a_row_temp[2 * par_n:max_tmp:pm.PARAMS_STRIPE_STEP] += 1
             a_row_temp[3 * par_n:max_tmp:pm.PARAMS_STRIPE_STEP] += 1
 
-            a_row = frombuffer(cipher.encrypt(a_row_temp), dtype=uint16).copy()
+            a_row = frombuffer(cipher.encrypt(bytes(a_row_temp)), dtype=uint16).copy()
             a_row[:max_tmp] = LE_TO_UINT16(a_row[:max_tmp])
 
             sum_v = zeros((4,par_nbar), dtype=uint16)
@@ -87,7 +87,7 @@ class Frodo():
         a_cols_temp = zeros(pm.PARAMS_N*pm.PARAMS_STRIPE_STEP, dtype=uint16)
 
         # Create new EVP cipher object and pass key from pk
-        cipher = AES.new(seed_A[:16], AES.MODE_ECB)
+        cipher = AES.new(bytes(seed_A[:16]), AES.MODE_ECB)
 
         # Loading values in the little - endian order
         a_cols_temp[:pm.PARAMS_N * pm.PARAMS_STRIPE_STEP:pm.PARAMS_STRIPE_STEP] =\
@@ -99,7 +99,7 @@ class Frodo():
             a_cols_temp[1:pm.PARAMS_N*pm.PARAMS_STRIPE_STEP:pm.PARAMS_STRIPE_STEP] = \
                 array([UINT16_TO_LE(kk)] * pm.PARAMS_N, dtype=uint16)
 
-            a_cols = frombuffer(cipher.encrypt(a_cols_temp), dtype=uint16).copy()
+            a_cols = frombuffer(cipher.encrypt(bytes(a_cols_temp)), dtype=uint16).copy()
 
             # Transpose a_cols to have access to it in the column - major order.
             a_cols_t = transpose(a_cols.reshape((pm.PARAMS_N,a_cols.shape[0]//pm.PARAMS_N))).flatten()

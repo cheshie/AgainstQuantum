@@ -7,7 +7,8 @@ from time import sleep
 from datetime import datetime
 from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640 as FrodoAPI
 from Crypto.Cipher import AES
-import binascii
+from Crypto.Util.Padding import pad, unpad
+from binascii import hexlify, unhexlify
 
 
 class ConnectionManager:
@@ -59,7 +60,8 @@ class ConnectionManager:
 
         self.log("[*] Listening on %s:%d" % (self.ip, self.port))
 
-        self.KeyExchange.generate_keypair()
+        if self.encryption:
+            self.KeyExchange.generate_keypair()
 
         while True:
             # Accept connection and add to list of connections
@@ -73,10 +75,6 @@ class ConnectionManager:
                 # No message was sent. User requested another action (i.e. server's public key)
                 continue
 
-            # TODO:
-            #     I should somehow add shared key to the list. How? Should I add to specific client in a list or dict?
-            #     look at the line: self.Enc = self.Encryption(self.KeyExchange.shared_secret)
-            #     here the program adds shared secret to the server. I want to add it to a specific client
             # Adding new connection to the server
             sender = self.add_server_conn(client, addr, message['port'])
 
@@ -98,7 +96,6 @@ class ConnectionManager:
                     exit(-1)
             else:
                 serv_status = self.check_server_is_online()
-                # print("serv_status: ", serv_status['code'])
                 if serv_status['code'] == 401:
                     self.log('[!] This server is secure. Connect with --secure option. Exiting')
                     exit(-1)
@@ -109,7 +106,7 @@ class ConnectionManager:
             self.answer_listener.start()
 
             if self.encryption and self.KeyExchange.secure_connection:
-                self.Enc = self.Encryption(self.KeyExchange.shared_secret)
+                self.Enc = self.Encryption(bytes(self.KeyExchange.shared_secret))
                 self.log("[*] Connection with the server is now secure.")
         except KeyboardInterrupt:
             self.answer_listener.alive = False
@@ -160,7 +157,6 @@ class ConnectionManager:
             message['nick'] = self.Enc.encrypt_message(message['nick'])
             message['msg']  = self.Enc.encrypt_message(message['msg'])
             message['port'] = self.Enc.encrypt_message(str(message['port']))
-        #
 
         response = self.remote.send_message(message)
         self.log(f"[*] Sending message returned: {response.decode()}", file=True)
@@ -189,10 +185,16 @@ class ConnectionManager:
         if not data:
             client.close()
             return
-
-        # Interpret sent structure into function
-        remote_name = json.loads(data)['func']
-        remote_args = tuple(json.loads(data)['argv'])
+        try:
+            # Interpret sent structure into function
+            ConnectionManager.log("[*] JSON Data from client received. Trying to decode it...")
+            remote_name = json.loads(data)['func']
+            remote_args = tuple(json.loads(data)['argv'])
+        except Exception as ex:
+            ConnectionManager.log(f"[!] Error while trying to decode incorrect user request. Skipping this request.\n => Reason: {ex}")
+            return None
+        else:
+            ConnectionManager.log( f"[*] Data decoded. Processing client's request.")
 
         # Determine if server supports this function
         if remote_name not in self.remote.shared:
@@ -237,7 +239,7 @@ class ConnectionManager:
                 self.log(f"[*] Sending server's public key back to the client: {client}")
 
             if hasattr(self.KeyExchange, 'shared_secret'):
-                self.Enc = self.Encryption(self.KeyExchange.shared_secret)
+                self.Enc = self.Encryption(bytes(self.KeyExchange.shared_secret))
                 self.log(f"[*] Connection secured with client: {client}")
 
             return None
@@ -307,35 +309,31 @@ class ConnectionManager:
         def __init__(self, key):
             # Key provided here as a list of bytes, will be encoded below to a raw bytes
             self.key = key
-            self.cipher = AES.new(bytes(self.key))
         #
 
         # Take message in str format, decrypt it and return hex data ready to send
+        # Default encoding is hex
+        # Takes str, returns str
         def encrypt_message(self, message):
-            raw = self.pkcs7_pad(message)
-            return binascii.hexlify(self.cipher.encrypt(raw)).decode()
+            try:
+                ciphertext =  AES.new(self.key, AES.MODE_ECB).encrypt(pad(message.encode(), AES.block_size,  style='pkcs7'))
+            except Exception as ex:
+                ConnectionManager.log(f"[!] Error while encrypting message. Returning string \"not encrypted\". Reason: \n => {ex}")
+                return "not encrypted"
+            return hexlify(ciphertext).decode()
         #
 
         # Decrypt received data in str format
+        # Default encoding is hex
+        # Takes str, returns bytes
         def decrypt_message(self, message):
-            message_decoded = binascii.unhexlify(message)
-            raw = self.cipher.decrypt(message_decoded)
-            message = self.pkcs_7_unpad(raw.decode())
-            return message
-        #
+            try:
+                raw = unpad(AES.new(self.key, AES.MODE_ECB).decrypt(unhexlify(message)) , AES.block_size,  style='pkcs7')
+            except Exception as ex:
+                ConnectionManager.log(f"[!] Error while decrypting message. Returning string \"not encrypted\". Reason: \n => {ex}")
+                return "not decrypted"
 
-        # Auxiliary AES functions for padding
-        def pkcs7_pad(self, data):
-            pad_len = 16 - (len(data) % 16)
-            pad_len = 16 if pad_len == 0 else pad_len
-            return data + chr(pad_len) * pad_len
-        #
-
-        def pkcs_7_unpad(self, data):
-            pad_len = ord(data[-1])
-            data, pad = data[:-pad_len], data[-pad_len:]
-            assert all(c == pad[0] for c in pad)
-            return data
+            return raw.decode()
         #
     #
 
@@ -363,8 +361,13 @@ class ConnectionManager:
 
         # Server must generate own pair of keys (public, private)
         def generate_keypair(self):
-            self.server_pk, self.server_sk = self.keypair_generation()
-
+            ConnectionManager.log("[*] Generating server's key pair...")
+            try:
+                self.server_pk, self.server_sk = self.keypair_generation()
+            except Exception as ex:
+                ConnectionManager.log(f"FrodoKEM KeyGeneration Error. Please restart the server. \nReason => {ex}")
+            # Offline mode means connecting through files, not sockets (debugging mode)
+            ConnectionManager.log("[*] Keys successfully generated")
             if self.mode == 'offline':
                 open('server_pk.key', 'wb').write(bytearray(self.server_pk))
         #
@@ -388,6 +391,10 @@ class ConnectionManager:
                 self.ExchangeAlgorithm.kem.set_public_key(list(open('server_pk.key', 'rb').read()))
 
             # Generate shared secret
+            # TODO: Key encryption issues
+            # In short - key encryption is not deterministic (by design ofc). This means, each time
+            # each new client will generate completely different shared secret, whereas
+            # server's key decryption is fully deterministic.
             self.ct, self.shared_secret = self.key_encryption()
 
             # After receiving public key calculate shared secret and ciphertext.
@@ -399,7 +406,7 @@ class ConnectionManager:
                 else:
                     open('server_c.key', 'wb').write(bytearray(list(self.ct)))
             except OSError as oerr:
-                ConnectionManager.log("[!] Failed writing to the log file. Check permissions")
+                ConnectionManager.log(f"[!] Failed writing to the log file. Check permissions. Reason: {oerr}")
 
             self.secure_connection = True
         #
@@ -420,9 +427,15 @@ class ConnectionManager:
                     else:
                         self.ExchangeAlgorithm.kem.set_ciphertext(list(open('server_c.key', 'rb').read()))
 
-                    # Calculate shared secret
-                    self.shared_secret = self.key_decryption()
-                    self.secure_connection = True
+                    try:
+                        # Calculate shared secret
+                        ConnectionManager.log("[*] FrodoKEM: Decrypting key received from the client to calculate shared secret...")
+                        self.shared_secret = self.key_decryption()
+                        self.secure_connection = True
+                    except Exception as ex:
+                            ConnectionManager.log(f"[!] FrodoKEM KeyDecryption() Error. Please restart the server. \nReason => {ex}")
+                    else:
+                        ConnectionManager.log("[*] FrodoKEM: Shared secret calculated successfully")
 
                 # Send back information to client about successful key exchange
                 client.sendall(struct.pack("<I", len(json.dumps({'code': 200}).encode())))
