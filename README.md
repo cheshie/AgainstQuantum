@@ -62,12 +62,12 @@ You will be presented with the following information:
 
 The purpose of Chat feature in Application module is the presentation of Python’s FrodoKEM implementation in real-world scenario. The tool has a --secure option which starts secure connection with the server to exchange messages or ensures that server accepts only secure connections (when used with the server). Chat in the visual mode is presented on the figure below, and is run with the following command: 
 ```
-  # python3 -m Application -l --mode visual
+  # python3 -m Application -c --mode visual
 ```
 
 ![Visual](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/application_visual.png)
 
-Application looks similarly in client mode. In order to run it, use *-c* options instead of *-L*. In order to start Chat in text mode, change *visual* parameter to *text* (which is also the default mode). The screen looks as follows in server mode: 
+Application looks similarly in server mode, just without the small box at the bottom to get user's input. In order to run it, use *-l* options instead of *-c*. In order to start Chat in text mode, change *visual* parameter to *text* (which is also the default mode). The screen looks as follows in server mode: 
 ```
   # python3 -m Application -l --mode text
 ```
