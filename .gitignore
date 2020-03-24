@@ -1,4 +1,6 @@
 ## FILES TO BE IGNORED
 # PYC bytecode files:
 FrodoKEM/__pycache__/
+Application/__pycache__/
 .idea
+*.log
