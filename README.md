@@ -17,7 +17,9 @@ This section will quickly summarize main points of this project, and possible is
 
 *Server receives ct, calculates its shared secret, everythings fine.
 The problem is, when second client connects to the server, it **generates another shared  secret from the same public key**. As for now, I was not able to find a solution.
+
 2. Sending files is not yet implemented
+
 3. There is a plan to implement SIDH in the future, as mere analysis of this algorithm was in fact part of my bachelor, and additionally much of the code is actually the same as in FrodoKEM (many matrix abstract maths operations)
 
 PQC in Python
