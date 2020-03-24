@@ -9,9 +9,12 @@ Summary
 ------
 This section will quickly summarize main points of this project, and possible issues. Moving on: 
 1. Main problem, most likely with my understanding of LWEKE scheme, is that its not possible to connect more than one client securely to the server, due to key exchange issues. Mainly, and here you should have some basic understanding of this key exchange scheme, it is not as symmetrical as DH is, and the key exchange goes as follows: 
-``*Server generates keypair (probabilistic algorithm)
-``*Client gets server's public key, and using key_encapulation(/encryption) algorithm, which is not in fact deterministic, generates shared secret and ct (and sends it back to server)
-``*Server receives ct, calculates its shared secret, everythings fine.
+
+*Server generates keypair (probabilistic algorithm)
+
+*Client gets server's public key, and using key_encapulation(/encryption) algorithm, which is not in fact deterministic, generates shared secret and ct (and sends it back to server)
+
+*Server receives ct, calculates its shared secret, everythings fine.
 The problem is, when second client connects to the server, it **generates another shared  secret from the same public key**. As for now, I was not able to find a solution.
 2. Sending files is not yet implemented
 3. There is a plan to implement SIDH in the future, as mere analysis of this algorithm was in fact part of my bachelor, and additionally much of the code is actually the same as in FrodoKEM (many matrix abstract maths operations)
