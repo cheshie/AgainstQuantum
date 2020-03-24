@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="frodokem-terminalchat-0xCA7",
+    name="frodokem-with-chat",
     version="0.0.1",
     author="0xCA7",
     author_email="samselprzemyslaw@gmail.com",
