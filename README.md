@@ -4,7 +4,7 @@ This is Python implementation of FrodoKEM (Key Exchange Mechanism), as a result 
 
 **Disclaimer**
 
-I tried too keep all comments in place (as even Microsoft gives credits to other authors for some functions) so that it is clear who implemented what. I cannot take any credits nor profit for my implementation, as it is merely a re-interpretation of other people's work. Therefore I share this Python implementation publicly, as much open source as original authors would wish it. Enjoy. 
+I tried too keep all comments in place (as even Microsoft gives credits to other authors for some functions) so that it is clear who implemented what. I cannot take any credits nor profit for my implementation, as it is merely a re-interpretation of other people's work. Therefore I share this Python implementation publicly, as much open source as original authors (https://github.com/microsoft/PQCrypto-LWEKE) would wish it. Enjoy. 
 
 Summary
 ------
