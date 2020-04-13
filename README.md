@@ -6,22 +6,6 @@ This is Python implementation of FrodoKEM (Key Exchange Mechanism), as a result 
 
 I tried too keep all comments in place (as even Microsoft gives credits to other authors for some functions) so that it is clear who implemented what. I cannot take any credits nor profit for my implementation, as it is merely a re-interpretation of other people's work. Therefore I share this Python implementation publicly, as much open source as original authors (https://github.com/microsoft/PQCrypto-LWEKE) would wish. Enjoy. 
 
-Summary
-------
-This section will quickly summarize main points of this project, and possible issues. Moving on: 
-1. Main problem, most likely with my understanding of LWEKE scheme, is that its not possible to connect more than one client securely to the server, due to key exchange issues. Mainly, and here you should have some basic understanding of this key exchange scheme, it is not as symmetrical as DH is, and the key exchange goes as follows: 
-
-*Server generates keypair (probabilistic algorithm)
-
-*Client gets server's public key, and using key_encapulation(/encryption) algorithm, which is not in fact deterministic, generates shared secret and ct (and sends it back to server)
-
-*Server receives ct, calculates its shared secret, everythings fine.
-The problem is, when second client connects to the server, it **generates another shared  secret from the same public key**. As for now, I was not able to find a solution.
-
-2. Sending files is not yet implemented
-
-3. There is a plan to implement SIDH in the future, as mere analysis of this algorithm was in fact part of my bachelor, and additionally much of the code is actually the same as in FrodoKEM (many matrix abstract maths operations)
-
 PQC in Python
 ------
 Similarly to Microsoft's implementation, the structure of source files is maintained. Going top-down, there is *test_kem.py* that server an interface to interact, test, benchmark FrodoKEM. Next up, there is *FrodoAPI640* file/class, which implements parameters for the lowest-security-level version of FrodoKEM (accoring to NIST proposals) - targeting bruteforce security of **AES-128**. The other versions of FrodoKEM, namely FrodoKEM-976 and FrodoKEM-1344, targeting respectively AES-192 and AES-256 are not implemented, but all the underlying methods were in fact coded, so implementing these variations is simply a matter of creating new class, adding parameters and connecting correct methods. Going down, next class to discuss is CryptoKEM. This is where all high-level mechanisms of FrodoKEM reside - *key generation*, *key encapsulation* and *key decapsulation*. It is worth to note here that FrodoKEM uses key exchange protocol based on LWEKE scheme (Learning With Errors Key Exchange), which is a bit different from Diffie-Hellman scheme. The difference is, LWEKE is not as symmetric as D-H, because both *key generation* and *key encapsulation* are probabilistic algorithms. The bottom level of files/classes structure belongs to *Frodo*, where all the abstract mathematical functions for FrodoKEM were implemented. *SHA202* implements **SHAKE** functions and **KECCAKf1600** permutations used to generate the matrix A. The *noise.py* and *util.py* files are complementary functions that have implemented some basic operations which FrodoKEM uses. General UML-like diagram shows the discussed dependencies: 
@@ -169,4 +153,13 @@ What is more, there are problems in generating keys as well, meaning you will be
   ss2_A   = FrodoAPI.crypto_kem_dec_frodo640()
   # Exchanged keys ss2_C and ss2_A are not equal => not good
 ```
-I can say that both key generation and encapsulation work perfectly fine - for a defined set of random seeds used in these functions they return exactly the same values as Microsoft's implementation. Problem must lie somewhere else, but as for now, I was not able to investigate the source of the issue. Hope someone find it. If so, please let me know. 
+I can say that both key generation and encapsulation work perfectly fine - for a defined set of random seeds used in these functions they return exactly the same values as Microsoft's implementation. Problem must lie somewhere else, but as for now, I was not able to investigate the source of the issue. Hope someone find it. If so, please let me know. Note that the same functions work as expected in Microsoft's implementations - meaning there must be some obvious mistake done in my implementation. 
+
+Plans
+------
+This section will quickly summarize main points of this project, and possible issues.
+1. Main problem, most likely with my understanding of LWEKE scheme, is that its not possible to connect more than one client securely to the server, due to key exchange issues. 
+
+2. Sending files is not yet implemented
+
+3. There is a plan to implement SIDH in the future, as mere analysis of this algorithm was in fact part of my bachelor, and additionally much of the code is actually the same as in FrodoKEM (many matrix abstract maths operations)
