@@ -34,6 +34,10 @@ Another side of the store is demonstration application (Application module). It 
 
 ![Application Structure](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/classess_application.png)
 
+As mentioned, FrodoKEM uses FrodoPKE scheme, which is based on LWEKE scheme. Comparing to classical Diffie-Hellman, it is not as symmetrical - meaning exchanging parties do different calculations. In short, firstly A generates keypair. The other party, say B, takes A's public key, and does encapsulation on it, generating shared secret and vector called ciphertext, which then it sends back ciphertext to A. A is now able to generate shared secret (decapsulation) based on that ciphertext and its private key. What is important here, is that only last operation (decapsulation) is fully deterministic. That means, each new client connects to A, it will generate different shared secret, and different ciphertext. General scheme is shown below: 
+
+![FrodoPKE Scheme](https://github.com/PrzemyslawSamsel/AgainstQuantum/blob/master/images/FrodoPKE_diagram.png)
+
 
 Differences between C and Python implementations
 ------
@@ -52,7 +56,24 @@ Python implementation of the same function hides all the logic under functions t
 
 Examples
 ------
-This section provides information about basic usage of *Application* module. In order to get help, run module without any arguments: 
+Modules have been published on PyPi and are available [there](https://pypi.org/project/frodokem-with-chat/1.0.4/). In order to install them, use: 
+```python
+  # python3 -m pip install frodokem-with-chat
+```
+Then you are able to use two modules: *FrodoKEM* and *Application*. Example key exchange looks as follows: 
+
+```python
+  from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640
+  FrodoAPI = FrodoAPI640()
+  # Generating keys 
+  pk, sk = FrodoAPI.crypto_kem_keypair_frodo640()
+  # Party B generates secret
+  ciphertext, ss1_B = FrodoAPI.crypto_kem_enc_frodo640()
+  # Party A generates secret
+  ss1_A   = FrodoAPI.crypto_kem_dec_frodo640()
+```
+
+Below is a basic usage of *Application* module. In order to get help, run module without any arguments: 
 ```
   # python3 -m Application 
 ```
@@ -133,3 +154,19 @@ There is one caveat that comes with this implementation in Python. Once for a ti
 
 The Application module was run with specific options in order to deliver results of tests run 1000 times – key generation, encapsulation, decapsulation and comparison of computed shared secret vectors. There were only 2 incorrect results (mismatch) and 998 correct – failure rate is extremely small. The Python script shows current operation, current iteration (with a progress bar below) and based on n-1 iteration (starting iteration nr. n=1) it approximates estimated run time. The tests run 19528.35 seconds ( ~ 330 mins => 5,5 hrs). 
 
+What is more, there are problems in generating keys as well, meaning you will be only able to generate first pair of keys successfully (for communication between A and B from example in earlier sections). Each next exchange is unfortunately unsuccessfull, and I was not able to find a solution. See example: 
+```python
+  from FrodoKEM.frodo640.api_frodo640 import FrodoAPI640
+  FrodoAPI = FrodoAPI640()
+  pk, sk = FrodoAPI.crypto_kem_keypair_frodo640()
+  
+  # Successfull exchange, meaning ss1_B == ss1_A
+  c, ss1_B = FrodoAPI.crypto_kem_enc_frodo640()
+  ss1_A   = FrodoAPI.crypto_kem_dec_frodo640()
+  
+  # When another party wants to exchange keys
+  c, ss2_C = FrodoAPI.crypto_kem_enc_frodo640()
+  ss2_A   = FrodoAPI.crypto_kem_dec_frodo640()
+  # Exchanged keys ss2_C and ss2_A are not equal => not good
+```
+I can say that both key generation and encapsulation work perfectly fine - for a defined set of random seeds used in these functions they return exactly the same values as Microsoft's implementation. Problem must lie somewhere else, but as for now, I was not able to investigate the source of the issue. Hope someone find it. If so, please let me know. 
