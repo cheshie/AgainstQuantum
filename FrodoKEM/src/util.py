@@ -11,7 +11,7 @@ def frodo_pack(out, outlen, invec, inlen, lsb):
     # Pack the input uint16 vector into a char output vector,
     # copying lsb bits from each input element.
     # If inlen * lsb / 8 > outlen, only outlen * 8 bits are copied.
-    out[outlen:] = 0
+    out[:outlen] = 0
 
     i = 0
     j = 0
@@ -54,7 +54,7 @@ def frodo_pack(out, outlen, invec, inlen, lsb):
 def frodo_unpack(out, outlen, invec, inlen, lsb):
     # Unpack the input char vector into a uint16_t output vector, copying lsb bits
     # for each output element from input. outlen must be at least ceil(inlen * 8 / lsb).
-    out[outlen:] = 0
+    out[:outlen] = 0
 
     i = 0 # whole uint16_t already filled in
     j = 0 # whole bytes already copied

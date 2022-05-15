@@ -1,4 +1,4 @@
-from numpy import array, zeros, uint8, uint16, frombuffer, copyto, empty
+from numpy import array, zeros, uint8, uint16, frombuffer, copyto, empty, array_equal
 import secrets
 from FrodoKEM.src.config import LE_TO_UINT16, UINT16_TO_LE
 from FrodoKEM.src.frodo_macrify import Frodo
@@ -220,11 +220,11 @@ class CryptoKem(Frodo):
         Sp[:(2 * pm.PARAMS_N + pm.PARAMS_NBAR) * pm.PARAMS_NBAR] =\
             LE_TO_UINT16(Sp[:(2 * pm.PARAMS_N + pm.PARAMS_NBAR) * pm.PARAMS_NBAR])
         frodo_sample_n(Sp, pm.PARAMS_N * pm.PARAMS_NBAR, pm)
-        frodo_sample_n(Ep, pm.PARAMS_N * pm.PARAMS_NBAR, pm)
+        frodo_sample_n(Epp, pm.PARAMS_N * pm.PARAMS_NBAR, pm)
         Frodo.mul_add_sa_plus_e(pm, BBp, Sp, Ep, pk_seedA)
 
         # Generate Epp and compute W = Sp*B + Epp
-        frodo_sample_n(Ep, pm.PARAMS_NBAR ** 2, pm)
+        frodo_sample_n(Epp, pm.PARAMS_NBAR ** 2, pm)
         frodo_unpack(B, pm.PARAMS_N*pm.PARAMS_NBAR,
                      pk_b, pm.CRYPTO_PUBLICKEYBYTES - pm.BYTES_SEED_A, pm.PARAMS_LOGQ)
         Frodo.mul_add_sb_plus_e(pm, W, B, Sp, Epp)
@@ -242,8 +242,7 @@ class CryptoKem(Frodo):
             BBp[:pm.PARAMS_N*pm.PARAMS_NBAR] & ((1 << pm.PARAMS_LOGQ) - 1)
 
         # Is (Bp == BBp & C == CC) == true
-        if Bp[:2 * pm.PARAMS_N * pm.PARAMS_NBAR].all() == BBp[:2 * pm.PARAMS_N * pm.PARAMS_NBAR].all() and\
-            C[:2 * pm.PARAMS_NBAR ** 2].all() == CC[:2 * pm.PARAMS_NBAR ** 2].all():
+        if array_equal(Bp, BBp) and array_equal(C,  CC):
             # Load k' to do ss = F(ct || k')
             Fin_k[:pm.CRYPTO_BYTES] = kprime[:pm.CRYPTO_BYTES]
         else:

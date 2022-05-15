@@ -185,7 +185,11 @@ class ConnectionManager:
         if not data:
             client.close()
             return
+        
+        # Client has sent structure with data and message
         try:
+            print("Received len: ", len(data))
+            # print("-------\n", data, "\n-----") TODO: DEBUG
             # Interpret sent structure into function
             ConnectionManager.log("[*] JSON Data from client received. Trying to decode it...")
             remote_name = json.loads(data)['func']
@@ -396,11 +400,13 @@ class ConnectionManager:
             # each new client will generate completely different shared secret, whereas
             # server's key decryption is fully deterministic.
             self.ct, self.shared_secret = self.key_encryption()
+            # print("[D] CT LEN: ", len(self.ct)) # TODO DEBUG
 
             # After receiving public key calculate shared secret and ciphertext.
             # Next - send ciphertext back to the server (LWE-based key exchange)
             try:
                 if self.mode == 'online':
+                    # print("Ciphertext: ", len(list(bytearray(list(self.ct))))) # TODO: DEBUG
                     remote.key_exchange({'action': {'ciphertext': list(bytearray(list(self.ct)))}})
                     open('server_c.key', 'wb').write(bytearray(list(self.ct)))
                 else:
