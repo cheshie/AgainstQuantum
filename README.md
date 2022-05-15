@@ -155,10 +155,19 @@ What is more, there are problems in generating keys as well, meaning you will be
 ```
 I can say that both key generation and encapsulation work perfectly fine - for a defined set of random seeds used in these functions they return exactly the same values as Microsoft's implementation. Problem must lie somewhere else, but as for now, I was not able to investigate the source of the issue. Hope someone find it. If so, please let me know. Note that the same functions work as expected in Microsoft's implementations - meaning there must be some obvious mistake done in my implementation. 
 
-Plans
+Plans / Problems
 ------
 This section will quickly summarize main points of this project, and possible issues.
-1. Main problem, most likely with my understanding of LWEKE scheme, is that its not possible to connect more than one client securely to the server, due to key exchange issues. 
+1. There were minor bugs in key generation (kudos to @AgenteFervi (Twitter) for the analysis). Another issue, sometimes, during key exchange between client and server, the server does not receive entire ciphertext with shared secret, only about 32664 bytes, whereas it should receive 44445 bytes. Probably some kind of problem in TCP stack in Python, or, more probably, i've made mistake somewhere. One solution would be to re-initiate key exchange, until all bytes are received. Still, there was some time since I developed this project so it will take time to dive into it. 
+
+On the server side, it is visible as the following error: 
+
+```
+[!] Error while trying to decode incorrect user request. Skipping this request.
+ => Reason: Expecting value: line 1 column 32665 (char 32664)
+```
+
+Also, I haven't been able to receive any messages with any of the clients with --secure flag set. This issue has to be investigated separately. 
 
 2. Sending files is not yet implemented
 
